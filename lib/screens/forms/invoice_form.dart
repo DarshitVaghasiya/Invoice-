@@ -1,0 +1,853 @@
+import 'package:currency_picker/currency_picker.dart';
+import 'package:flutter/material.dart';
+import 'package:invoice/app_data/app_data.dart';
+import 'package:invoice/models/customer_model.dart';
+import 'package:invoice/models/invoice_model.dart';
+import 'package:invoice/models/item_model.dart';
+import 'package:invoice/widgets/buttons/custom_elevatedbutton.dart';
+import 'package:invoice/widgets/buttons/custom_iconbutton.dart';
+import 'package:invoice/widgets/buttons/custom_textformfield.dart';
+import 'package:invoice/widgets/layout/item_card.dart';
+import 'package:invoice/widgets/layout/section_widget.dart';
+import 'package:invoice/widgets/layout/total_row.dart';
+
+class InvoiceFormPage extends StatefulWidget {
+  final Map<String, dynamic>? existingInvoice;
+  final int? index;
+
+  const InvoiceFormPage({super.key, this.existingInvoice, this.index});
+
+  @override
+  State<InvoiceFormPage> createState() => _InvoiceFormPageState();
+}
+
+class _InvoiceFormPageState extends State<InvoiceFormPage> {
+  final _formKey = GlobalKey<FormState>();
+
+  // Controllers
+  final invoiceNo = TextEditingController(),
+      poNumber = TextEditingController(),
+      from = TextEditingController(),
+      billTo = TextEditingController(),
+      shipTo = TextEditingController(),
+      notes = TextEditingController(),
+      terms = TextEditingController(),
+      date = TextEditingController(),
+      dueDate = TextEditingController(),
+      discountController = TextEditingController(),
+      taxController = TextEditingController(),
+      shippingController = TextEditingController();
+
+  // Flags
+  bool discountIsPercent = true, taxIsPercent = true;
+  bool showDiscount = false, showTax = false, showShipping = false;
+  bool showPurchaseNo = true, showNotes = true, showTerms = true;
+  List<ItemModel> items = [];
+  List<CustomerModel> customers = [];
+  CustomerModel? selectedCustomer;
+  Currency? selectedCurrency;
+
+  // Labels
+  String descLabel = "Products", qtyLabel = "Qty", rateLabel = "Price";
+
+  String currencySymbol = '\$';
+
+  @override
+  void initState() {
+    super.initState();
+    _initPage();
+  }
+
+  Future<void> _initPage() async {
+    await _loadSettings();
+    await _loadLabels();
+    await _loadProfile();
+    await _loadCustomers();
+    if (widget.existingInvoice != null) {
+      await _loadInvoice();
+    } else {
+      await _setNextInvoiceNo();
+      _addItem();
+    }
+  }
+
+  Future<void> _loadProfile() async {
+    final profile = AppData().profile;
+    if (profile == null) return;
+
+    final addressParts = [
+      profile.street,
+      profile.city,
+      profile.state,
+      profile.country,
+    ].where((e) => e.isNotEmpty).join(', ');
+
+    final parts = [
+      profile.name,
+      if (addressParts.isNotEmpty) addressParts,
+      if (profile.email.isNotEmpty) profile.email,
+      if (profile.phone.isNotEmpty) profile.phone,
+    ].join('\n');
+
+    setState(() {
+      from.text = parts;
+    });
+  }
+
+  Future<void> _loadSettings() async {
+    final s = AppData().settings;
+    showPurchaseNo = s.showPurchaseNo;
+    showNotes = s.showNotes;
+    showTerms = s.showTerms;
+  }
+
+  Future<void> _loadLabels() async {
+    final settings = AppData().settings;
+
+    setState(() {
+      descLabel = settings.descTitle.isNotEmpty == true
+          ? settings.descTitle
+          : "Product";
+      qtyLabel = settings.qtyTitle.isNotEmpty == true
+          ? settings.qtyTitle
+          : "Qty";
+      rateLabel = settings.rateTitle.isNotEmpty == true
+          ? settings.rateTitle
+          : "Price";
+    });
+  }
+
+  Future<void> _setNextInvoiceNo() async {
+    invoiceNo.text = AppData().previewNextInvoiceNo();
+  }
+
+  void _addItem() => setState(() => items.add(ItemModel(desc: '', qty: '', rate: '')));
+
+  double get subtotal => items.fold(
+    0,
+    (s, i) =>
+        s +
+        ((int.tryParse(i.qty.text) ?? 0) * (double.tryParse(i.rate.text) ?? 0)),
+  );
+
+  double get _discount {
+    final v = double.tryParse(discountController.text) ?? 0;
+    if (!showDiscount) return 0;
+    return discountIsPercent ? subtotal * (v / 100) : v;
+  }
+
+  double get _tax {
+    final v = double.tryParse(taxController.text) ?? 0;
+    if (!showTax) return 0;
+    return taxIsPercent ? (subtotal - _discount) * (v / 100) : v;
+  }
+
+  double get _shipping =>
+      showShipping ? double.tryParse(shippingController.text) ?? 0 : 0;
+
+  double get total => subtotal - _discount + _tax + _shipping;
+
+  Future<void> _loadInvoice() async {
+    if (widget.existingInvoice == null) return;
+
+    final i = InvoiceModel.fromJson(widget.existingInvoice!);
+
+    // 🧾 Basic fields
+    invoiceNo.text = i.invoiceNo;
+    poNumber.text = i.poNumber ?? '';
+    from.text = i.from;
+    billTo.text = i.billTo;
+    shipTo.text = i.shipTo ?? '';
+    date.text = i.date;
+    dueDate.text = i.dueDate;
+    notes.text = i.notes ?? '';
+    terms.text = i.terms ?? '';
+
+    if (i.customerId != null) {
+      final foundCustomer = AppData().customers.firstWhere(
+        (c) => c.id == i.customerId,
+        orElse: () => CustomerModel(
+          id: 0,
+          name: '',
+          company: '',
+          email: '',
+          phone: '',
+          street: '',
+          city: '',
+          state: '',
+          country: '',
+          gst: '',
+          panCard: '',
+        ),
+      );
+      selectedCustomer = foundCustomer;
+    }
+    // 🏷️ Labels
+    descLabel = i.descLabel;
+    qtyLabel = i.qtyLabel;
+    rateLabel = i.rateLabel;
+
+    // Reset visibility flags
+    showDiscount = false;
+    showTax = false;
+    showShipping = false;
+
+    // 💸 Discount
+    final discountVal = i.discount.toString();
+    if (discountVal.isNotEmpty && discountVal != '0') {
+      discountController.text = discountVal;
+      discountIsPercent = i.discountType == "percent";
+      showDiscount = true;
+    }
+
+    // 💰 Tax
+    final taxVal = i.tax.toString();
+    if (taxVal.isNotEmpty && taxVal != '0') {
+      taxController.text = taxVal;
+      taxIsPercent = i.taxType == "percent";
+      showTax = true;
+    }
+
+    // 🚚 Shipping
+    final shippingVal = i.shipping.toString();
+    if (shippingVal.isNotEmpty && shippingVal != '0') {
+      shippingController.text = shippingVal;
+      showShipping = true;
+    }
+    items = List<ItemModel>.from(i.items);
+
+    currencySymbol = i.currencySymbol ?? '\$'; // default fallback
+    if (i.currencyCode != null) {
+      selectedCurrency = CurrencyService().findByCode(i.currencyCode!);
+    }
+    setState(() {});
+  }
+
+  Future<void> _saveInvoice() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    final invoice = InvoiceModel(
+      customerId: selectedCustomer?.id ?? widget.existingInvoice?['customerId'],
+      invoiceNo: invoiceNo.text,
+      poNumber: poNumber.text.isEmpty ? null : poNumber.text,
+      from: from.text,
+      billTo: billTo.text,
+      shipTo: shipTo.text.isEmpty ? null : shipTo.text,
+      date: date.text,
+      dueDate: dueDate.text,
+      descLabel: descLabel,
+      qtyLabel: qtyLabel,
+      rateLabel: rateLabel,
+      items: items,
+      subtotal: subtotal,
+      discount: discountController.text,
+      discountAmount: _discount,
+      discountType: discountIsPercent ? "percent" : "amount",
+      tax: taxController.text,
+      taxAmount: _tax,
+      taxType: taxIsPercent ? "percent" : "amount",
+      shipping: shippingController.text,
+      total: total,
+      notes: notes.text.isEmpty ? null : notes.text,
+      terms: terms.text.isEmpty ? null : terms.text,
+      status: widget.existingInvoice?['status'] ?? 'unpaid',
+
+      currencyCode: selectedCurrency?.code ?? 'USD',
+      currencySymbol: selectedCurrency?.symbol ?? '\$',
+      currencyName: selectedCurrency?.name ?? 'USA',
+    );
+
+    if (widget.index != null) {
+      AppData().invoices[widget.index!] = invoice;
+    } else {
+      AppData().invoices.add(invoice);
+      AppData().incrementInvoiceNo(invoice.invoiceNo);
+    }
+    Navigator.pop(context, invoice);
+  }
+
+  Future<void> _loadCustomers() async {
+    setState(() {
+      customers = List<CustomerModel>.from(AppData().customers);
+    });
+  }
+
+  Future<String?> showCustomDropdownMenuBelow(
+    BuildContext context,
+    GlobalKey key, {
+    required List<String> items,
+  }) async {
+    final RenderBox renderBox =
+        key.currentContext!.findRenderObject() as RenderBox;
+    final Offset offset = renderBox.localToGlobal(Offset.zero);
+    final Size size = renderBox.size;
+
+    final selected = await showMenu<String>(
+      color: Colors.white,
+      context: context,
+      position: RelativeRect.fromLTRB(
+        offset.dx,
+        offset.dy + size.height,
+        offset.dx + size.width,
+        offset.dy,
+      ),
+      items: items
+          .map((item) => PopupMenuItem<String>(value: item, child: Text(item)))
+          .toList(),
+    );
+
+    return selected;
+  }
+
+  Widget buildDatePicker(TextEditingController controller, String label) {
+    return GestureDetector(
+      onTap: () async {
+        FocusScope.of(context).unfocus(); // Hide keyboard
+        final now = DateTime.now();
+
+        final picked = await showDatePicker(
+          context: context,
+          initialDate: now,
+          firstDate: DateTime(2000),
+          lastDate: DateTime(2100),
+          builder: (context, child) {
+            return Theme(
+              data: Theme.of(context).copyWith(
+                colorScheme: const ColorScheme.light(
+                  primary: Color(0xFF009A75), // your primary green
+                  onPrimary: Colors.white,
+                  surface: Colors.white,
+                  onSurface: Colors.black87,
+                ),
+                textButtonTheme: TextButtonThemeData(
+                  style: TextButton.styleFrom(
+                    foregroundColor: const Color(0xFF009A75),
+                  ),
+                ),
+              ),
+              child: child!,
+            );
+          },
+        );
+
+        if (picked != null) {
+          controller.text =
+              "${picked.day.toString().padLeft(2, '0')}-${picked.month.toString().padLeft(2, '0')}-${picked.year}";
+        }
+      },
+      child: AbsorbPointer(
+        child: textFormField(
+          labelText: label,
+          controller: controller,
+          suffixIcon: Icon(
+            Icons.calendar_month_outlined,
+            color: Color(0xFF009A75),
+            size: 30,
+          ),
+          validator: (value) {
+            if (value == null || value.trim().isEmpty) {
+              return "Please select a date.";
+            }
+            return null;
+          },
+          readOnly: true,
+        ),
+      ),
+    );
+  }
+
+  Widget buildTotalsSection() {
+    return SectionWidget(
+      icon: Icons.calculate,
+      title: "Summary",
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TotalRow(
+            label: "Subtotal",
+            value: subtotal,
+            currencySymbol: currencySymbol,
+          ),
+          const SizedBox(height: 8),
+
+          // Discount
+          if (showDiscount)
+            Row(
+              children: [
+                const Text("Discount"),
+                const Spacer(),
+                SizedBox(
+                  width: 120,
+                  child: textFormField(
+                    controller: discountController,
+                    keyboardType: TextInputType.number,
+                    prefixText: discountIsPercent ? null : "$currencySymbol ",
+                    suffixText: discountIsPercent ? "%" : null,
+                    suffixIcon: CustomIconButton(
+                      icon: Icons.repeat,
+                      iconSize: 25,
+                      textColor: Colors.black,
+                      onTap: () {
+                        setState(() {
+                          discountIsPercent = !discountIsPercent;
+                        });
+                      },
+                    ),
+                    onChanged: (_) => setState(() {}),
+                  ),
+                ),
+                CustomIconButton(
+                  icon: Icons.close,
+                  textColor: Color(0xFF009A75),
+                  onTap: () => setState(() {
+                    showDiscount = false;
+                    discountController.clear();
+                  }),
+                ),
+              ],
+            ),
+
+          const SizedBox(height: 8),
+
+          // Tax
+          if (showTax)
+            Row(
+              children: [
+                const Text("Tax"),
+                const Spacer(),
+                SizedBox(
+                  width: 120,
+                  child: textFormField(
+                    controller: taxController,
+                    keyboardType: TextInputType.number,
+                    suffixText: taxIsPercent ? "%" : null,
+                    onChanged: (_) => setState(() {}),
+                  ),
+                ),
+                CustomIconButton(
+                  icon: Icons.close,
+                  textColor: Color(0xFF009A75),
+                  onTap: () => setState(() {
+                    showTax = false;
+                    taxController.clear();
+                  }),
+                ),
+              ],
+            ),
+
+          const SizedBox(height: 8),
+
+          // Shipping
+          if (showShipping)
+            Row(
+              children: [
+                const Text("Shipping"),
+                const Spacer(),
+                SizedBox(
+                  width: 120,
+                  child: textFormField(
+                    controller: shippingController,
+                    keyboardType: TextInputType.number,
+                    prefixText: "$currencySymbol ",
+                    onChanged: (_) => setState(() {}),
+                  ),
+                ),
+                CustomIconButton(
+                  icon: Icons.close,
+                  textColor: Color(0xFF009A75),
+                  onTap: () => setState(() {
+                    showShipping = false;
+                    shippingController.clear();
+                  }),
+                ),
+              ],
+            ),
+
+          const SizedBox(height: 12),
+
+          // ADD BUTTONS
+          Row(
+            children: [
+              if (!showDiscount)
+                CustomIconButton(
+                  label: "+ Discount",
+                  backgroundColor: Colors.transparent,
+                  textColor: const Color(0xFF009A75),
+                  onTap: () => setState(() => showDiscount = true),
+                ),
+              if (!showTax)
+                CustomIconButton(
+                  label: "+ Tax",
+                  backgroundColor: Colors.transparent,
+                  textColor: const Color(0xFF009A75),
+                  onTap: () => setState(() => showTax = true),
+                ),
+              if (!showShipping)
+                CustomIconButton(
+                  label: "+ Shipping",
+                  backgroundColor: Colors.transparent,
+                  textColor: const Color(0xFF009A75),
+                  onTap: () => setState(() => showShipping = true),
+                ),
+            ],
+          ),
+
+          const Divider(height: 24),
+
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                "Total",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              Text(
+                "$currencySymbol ${total.toStringAsFixed(2)}",
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF009A75),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isWide = MediaQuery.of(context).size.width > 900;
+    final GlobalKey buttonKey = GlobalKey();
+
+    final leftFormSections = [
+      SectionWidget(
+        icon: Icons.numbers,
+        title: "Invoice Details",
+        child: Column(
+          children: [
+            textFormField(
+              labelText: "Invoice No",
+              controller: invoiceNo,
+              readOnly: true,
+            ),
+            const SizedBox(height: 12),
+            if (showPurchaseNo)
+              textFormField(
+                labelText: "PO Number",
+                controller: poNumber,
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return "Please Enter PO Number.";
+                  }
+                  return null;
+                },
+              ),
+            if (showPurchaseNo) const SizedBox(height: 12),
+            textFormField(
+              labelText: "From (Your Company Info)",
+              controller: from,
+              keyboardType: TextInputType.multiline,
+              maxLines: null,
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return "Please Enter Your Company Info.";
+                }
+                return null;
+              },
+            ),
+          ],
+        ),
+      ),
+      SectionWidget(
+        icon: Icons.receipt_long_outlined,
+        title: "Customer Details",
+        trailing: CustomIconButton(
+          padding: EdgeInsets.symmetric(vertical: 0),
+          key: buttonKey,
+          label: "Select Customer",
+          suffixIcon: Icons.arrow_drop_down_sharp,
+          iconSize: 28,
+          textColor: const Color(0xFF009A75),
+          fontSize: 16,
+          onTap: () async {
+            if (customers.isEmpty) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text(
+                    'No customers found. Please add a customer first.',
+                  ),
+                  backgroundColor: Colors.redAccent,
+                ),
+              );
+              return;
+            }
+
+            final selected = await showCustomDropdownMenuBelow(
+              context,
+              buttonKey,
+              items: customers.map((c) {
+                final company = c.company.trim();
+                final name = c.name.trim();
+                return (company.isNotEmpty) ? company : name;
+              }).toList(),
+            );
+
+            if (selected != null) {
+              final foundCustomer = customers.firstWhere((c) {
+                final company = c.company.trim();
+                final name = c.name.trim();
+                return selected == ((company.isNotEmpty) ? company : name);
+              });
+
+              final company = foundCustomer.company.trim();
+              final name = foundCustomer.name.trim();
+              final address = [
+                foundCustomer.street.trim(),
+                foundCustomer.city.trim(),
+                foundCustomer.state.trim(),
+                foundCustomer.country.trim(),
+              ].where((e) => e.isNotEmpty).join(', ');
+              final pan = foundCustomer.panCard.trim();
+              final gst = foundCustomer.gst.trim();
+              final phone = foundCustomer.phone.trim();
+              final email = foundCustomer.email.trim();
+
+              final buffer = StringBuffer();
+              if (company.isNotEmpty) buffer.writeln(company);
+              if (name.isNotEmpty) buffer.writeln(name);
+              if (address.isNotEmpty) buffer.writeln(address);
+              if (email.isNotEmpty) buffer.writeln(email);
+              if (phone.isNotEmpty) buffer.writeln(phone);
+              if (gst.isNotEmpty) buffer.writeln("GST No: $gst");
+              if (pan.isNotEmpty) buffer.writeln("PAN No: $pan");
+              setState(() {
+                billTo.text = buffer.toString().trim();
+                selectedCustomer = foundCustomer;
+              });
+            }
+          },
+        ),
+        child: Column(
+          children: [
+            textFormField(
+              labelText: "Bill To",
+              controller: billTo,
+              keyboardType: TextInputType.multiline,
+              maxLines: null,
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return "Please Enter Bill To.";
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 12),
+            textFormField(
+              labelText: "Ship To (Optional)",
+              controller: shipTo,
+              keyboardType: TextInputType.multiline,
+              maxLines: null,
+            ),
+          ],
+        ),
+      ),
+      SectionWidget(
+        icon: Icons.calendar_today_outlined,
+        title: "Dates",
+        child: Row(
+          children: [
+            Expanded(child: buildDatePicker(date, "Invoice Date")),
+            const SizedBox(width: 16),
+            Expanded(child: buildDatePicker(dueDate, "Due Date")),
+          ],
+        ),
+      ),
+      SectionWidget(
+        icon: Icons.shopping_bag_outlined,
+        title: "Line Items",
+        trailing: CustomIconButton(
+          padding: EdgeInsets.symmetric(vertical: 0),
+          label: "Select Currency",
+          suffixIcon: Icons.arrow_drop_down_sharp,
+          iconSize: 28,
+          textColor: const Color(0xFF009A75),
+          fontSize: 16,
+          onTap: () {
+            showCurrencyPicker(
+              context: context,
+              showFlag: true,
+              showCurrencyName: true,
+              showCurrencyCode: true,
+              onSelect: (Currency currency) {
+                setState(() {
+                  selectedCurrency = currency;
+                  currencySymbol = currency.symbol;
+                });
+              },
+              theme: CurrencyPickerThemeData(
+                bottomSheetHeight: MediaQuery.of(context).size.height * 0.95,
+                backgroundColor: Colors.white,
+                flagSize: 24,
+                titleTextStyle: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+                subtitleTextStyle: const TextStyle(
+                  fontSize: 16,
+                  color: Colors.grey,
+                ),
+                inputDecoration: InputDecoration(
+                  labelText: 'Search Currency',
+                  prefixIcon: const Icon(Icons.search),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (var e in items.asMap().entries)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: ItemCard(
+                  index: e.key,
+                  item: e.value,
+                  descLabel: descLabel,
+                  qtyLabel: qtyLabel,
+                  rateLabel: rateLabel,
+                  currencySymbol: currencySymbol,
+                  onChanged: () => setState(() {}),
+                  onRemove: () {
+                    setState(() {
+                      items.removeAt(e.key);
+                      if (items.isEmpty) _addItem();
+                    });
+                  },
+                ),
+              ),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: _addItem,
+                icon: const Icon(Icons.add_circle, color: Color(0xFF009A75)),
+                label: const Text(
+                  "Add Line Item",
+                  style: TextStyle(
+                    color: Color(0xFF009A75),
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ];
+
+    final leftForm = ListView.separated(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: leftFormSections.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 16),
+      itemBuilder: (_, i) => leftFormSections[i],
+    );
+
+    final rightForm = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        buildTotalsSection(),
+        if (showNotes || showTerms) ...[
+          const SizedBox(height: 16),
+          SectionWidget(
+            icon: Icons.info_outline,
+            title: "Additional Information",
+            child: Column(
+              children: [
+                if (showNotes)
+                  textFormField(
+                    labelText: "Notes",
+                    controller: notes,
+                    keyboardType: TextInputType.multiline,
+                    maxLines: null,
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return "Please Enter Notes.";
+                      }
+                      return null;
+                    },
+                  ),
+                const SizedBox(height: 12),
+                if (showTerms)
+                  textFormField(
+                    labelText: "Terms",
+                    controller: terms,
+                    keyboardType: TextInputType.multiline,
+                    maxLines: null,
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return "Please Enter Terms.";
+                      }
+                      return null;
+                    },
+                  ),
+              ],
+            ),
+          ),
+        ],
+        const SizedBox(height: 24),
+        CustomElevatedButton(
+          label: "Save Invoice",
+          icon: Icons.save_rounded,
+          onPressed: _saveInvoice,
+          color: const Color(0xFF009A75),
+        ),
+      ],
+    );
+
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: Text(
+          widget.existingInvoice != null ? "Edit Invoice" : "Create Invoice",
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 24,
+            color: Colors.black87,
+          ),
+        ),
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        backgroundColor: Colors.white,
+        centerTitle: true,
+        iconTheme: const IconThemeData(color: Colors.black87),
+      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: Form(
+            key: _formKey,
+            child: isWide
+                ? Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(flex: 2, child: leftForm),
+                      const SizedBox(width: 24),
+                      Expanded(child: rightForm),
+                    ],
+                  )
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [leftForm, const SizedBox(height: 24), rightForm],
+                  ),
+          ),
+        ),
+      ),
+    );
+  }
+}
