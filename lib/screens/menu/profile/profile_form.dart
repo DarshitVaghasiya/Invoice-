@@ -465,7 +465,7 @@ class _InvoiceProfileFormState extends State<InvoiceProfileForm> {
                             },
                           ),
                         ),
-                        if (AppData().profile != null) ...[
+                        if (!isEditing && AppData().profile != null) ...[
                           const SizedBox(width: 12),
                           Expanded(
                             child: CustomIconButton(

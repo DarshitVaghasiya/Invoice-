@@ -1,9 +1,11 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:invoice/app_data/app_data.dart';
 import 'package:invoice/data_storage/InvoiceStorage.dart';
 import 'package:invoice/models/invoice_model.dart';
 import 'package:invoice/models/item_model.dart';
+import 'package:invoice/utils/signature_helper.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
@@ -26,7 +28,6 @@ class PdfGenerator1 {
   }
 
   static Future<File?> generateSimpleTemplates(InvoiceModel invoice) async {
-
     final baseFont = pw.Font.ttf(
       await rootBundle.load("assets/Fonts/Roboto-Regular.ttf"),
     );
@@ -64,6 +65,10 @@ class PdfGenerator1 {
     final bool showTax = settings.showTax;
     final bool showBank = settings.showBank;
     final String currencySymbol = invoice.currencySymbol ?? '\$';
+
+    final pw.MemoryImage? signatureImage = SignatureHelper.fromBase64(
+      settings.signatureBase64,
+    );
 
     pdf.addPage(
       pw.MultiPage(
@@ -477,18 +482,12 @@ class PdfGenerator1 {
                         "Bank Name: ${profile.bankName}",
                         style: const pw.TextStyle(fontSize: 12),
                       ),
-                    if ((profile.accountHolder)
-                        .toString()
-                        .trim()
-                        .isNotEmpty)
+                    if ((profile.accountHolder).toString().trim().isNotEmpty)
                       pw.Text(
                         "Account Holder: ${profile.accountHolder}",
                         style: const pw.TextStyle(fontSize: 12),
                       ),
-                    if ((profile.accountNumber)
-                        .toString()
-                        .trim()
-                        .isNotEmpty)
+                    if ((profile.accountNumber).toString().trim().isNotEmpty)
                       pw.Text(
                         "Account Number: ${profile.accountNumber}",
                         style: const pw.TextStyle(fontSize: 12),
@@ -540,6 +539,31 @@ class PdfGenerator1 {
                       style: const pw.TextStyle(fontSize: 12),
                     ),
                   ],
+                  if (signatureImage != null)
+                    pw.Align(
+                      alignment: pw.Alignment.bottomRight,
+                      child: pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.center,
+                        children: [
+                          pw.Container(
+                            width: 120,
+                            height: 60,
+                            child: pw.Image(
+                              signatureImage,
+                              fit: pw.BoxFit.contain,
+                            ),
+                          ),
+                          pw.SizedBox(height: 6),
+                          pw.Text(
+                            "Authorized Signature",
+                            style: pw.TextStyle(
+                              fontSize: 14,
+                              fontWeight: pw.FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -639,7 +663,7 @@ class PdfGenerator1 {
     pw.TextAlign align = pw.TextAlign.left,
   }) {
     return pw.Padding(
-      padding: const pw.EdgeInsets.symmetric(horizontal:6,vertical: 6),
+      padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 6),
       child: pw.Text(
         text,
         style: const pw.TextStyle(fontSize: 10, color: PdfColors.black),
@@ -647,5 +671,4 @@ class PdfGenerator1 {
       ),
     );
   }
-
 }

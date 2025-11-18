@@ -1,11 +1,13 @@
 import 'dart:convert';
 import 'dart:typed_data';
 import 'dart:io';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:invoice/app_data/app_data.dart';
 import 'package:invoice/data_storage/InvoiceStorage.dart';
 import 'package:invoice/models/invoice_model.dart';
 import 'package:invoice/models/item_model.dart';
+import 'package:invoice/utils/signature_helper.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
@@ -79,12 +81,17 @@ class PdfGenerator4 {
     final PdfColor lightGray = PdfColor.fromInt(0xFFF8F9FA);
     final PdfColor borderColor = PdfColor.fromInt(0xFFE5E7EB);
 
+    final pw.MemoryImage? signatureImage = SignatureHelper.fromBase64(
+      settings.signatureBase64,
+    );
+
     // --- Page Content ---
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.all(5),
-        footer: (context) => _footerSection(invoice, settings, lightGray),
+        footer: (context) =>
+            _footerSection(context, invoice, settings, lightGray),
         build: (context) {
           final items = invoice.items ?? [];
 
@@ -132,6 +139,31 @@ class PdfGenerator4 {
                           invoice.notes ?? '',
                           style: pw.TextStyle(fontSize: 9, color: darkText),
                         ),
+                        if (signatureImage != null)
+                          pw.Align(
+                            alignment: pw.Alignment.bottomRight,
+                            child: pw.Column(
+                              crossAxisAlignment: pw.CrossAxisAlignment.center,
+                              children: [
+                                pw.Container(
+                                  width: 120,
+                                  height: 60,
+                                  child: pw.Image(
+                                    signatureImage,
+                                    fit: pw.BoxFit.contain,
+                                  ),
+                                ),
+                                pw.SizedBox(height: 6),
+                                pw.Text(
+                                  "Authorized Signature",
+                                  style: pw.TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: pw.FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                       ],
                     ),
                 ],
@@ -286,8 +318,16 @@ class PdfGenerator4 {
           ),
           children: [
             _tableHeaderCell(headers[0], headerBlue),
-            _tableHeaderCell(headers[1], headerBlue, align: pw.TextAlign.center),
-            _tableHeaderCell(headers[2], headerBlue, align: pw.TextAlign.center),
+            _tableHeaderCell(
+              headers[1],
+              headerBlue,
+              align: pw.TextAlign.center,
+            ),
+            _tableHeaderCell(
+              headers[2],
+              headerBlue,
+              align: pw.TextAlign.center,
+            ),
             _tableHeaderCell(headers[3], headerBlue, align: pw.TextAlign.right),
           ],
         ),
@@ -458,30 +498,27 @@ class PdfGenerator4 {
 
   // 📜 FOOTER
   static pw.Widget _footerSection(
+    pw.Context context,
     InvoiceModel invoice,
     dynamic settings,
     PdfColor textColor,
   ) {
+    if (context.pageNumber != context.pagesCount) return pw.SizedBox();
+
     final PdfColor headerBlue = PdfColor.fromInt(0xFF0A2E6E);
     final companyName = AppData().profile?.name;
-
     return pw.Container(
-      alignment: pw.Alignment.bottomCenter,
+      alignment: pw.Alignment.centerRight,
       color: headerBlue,
       height: 70,
       padding: const pw.EdgeInsets.symmetric(vertical: 25, horizontal: 25),
-      child: pw.Row(
-        mainAxisAlignment: pw.MainAxisAlignment.end,
-        children: [
-          pw.Text(
-            companyName ?? 'Your Company Name',
-            style: pw.TextStyle(
-              color: PdfColors.white,
-              fontWeight: pw.FontWeight.bold,
-              fontSize: 12,
-            ),
-          ),
-        ],
+      child: pw.Text(
+        companyName ?? 'Your Company Name',
+        style: pw.TextStyle(
+          color: PdfColors.white,
+          fontWeight: pw.FontWeight.bold,
+          fontSize: 12,
+        ),
       ),
     );
   }

@@ -6,6 +6,7 @@ import 'package:invoice/data_storage/InvoiceStorage.dart';
 import 'package:invoice/models/invoice_model.dart';
 import 'package:invoice/models/item_model.dart';
 import 'package:invoice/models/profile_model.dart';
+import 'package:invoice/utils/signature_helper.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
@@ -63,88 +64,91 @@ class PdfGenerators6 {
       ),
     );
 
-    final String currency = invoice.currencySymbol ?? '₹';
+    final settings = AppData().settings;
+    final String currency = invoice.currencySymbol ?? '\$';
+
+    final pw.MemoryImage? signatureImage = SignatureHelper.fromBase64(
+      settings.signatureBase64,
+    );
 
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.symmetric(horizontal: 25, vertical: 20),
-        footer: (context) => pw.Container(
-          margin: const pw.EdgeInsets.symmetric(horizontal: -25, vertical: -20),
-          height: 100,
-          child: pw.Stack(
-            children: [
-              // Main teal background
-              pw.Positioned.fill(
-                child: pw.Container(
-                  decoration: pw.BoxDecoration(
-                    color: PdfColor.fromHex('#0B7A75'),
-                    borderRadius: const pw.BorderRadius.only(
-                      topLeft: pw.Radius.circular(80),
-                    ),
-                  ),
-                ),
-              ),
+        footer: (context) {
+          // ❗ SHOW ONLY ON LAST PAGE
+          if (context.pageNumber != context.pagesCount) {
+            return pw.SizedBox();
+          }
 
-              // Golden top border curve (simulated with smaller container)
-              pw.Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                child: pw.Container(
-                  height: 15,
-                  decoration: const pw.BoxDecoration(
-                    borderRadius: pw.BorderRadius.only(
-                      topLeft: pw.Radius.circular(80),
-                    ),
-                  ),
-                ),
-              ),
+          final profile = AppData().profile;
 
-              // Contact info (right)
-              pw.Positioned(
-                right: 40,
-                bottom: 25,
-                child: pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.end,
-                  children: [
-                    pw.Text(
-                      "Get in Touch",
-                      style: pw.TextStyle(
-                        color: PdfColors.white,
-                        fontWeight: pw.FontWeight.bold,
-                        fontSize: 11,
+          return pw.Container(
+            margin: const pw.EdgeInsets.symmetric(horizontal: -25, vertical: -20),
+            height: 100,
+            child: pw.Stack(
+              children: [
+                pw.Positioned.fill(
+                  child: pw.Container(
+                    decoration: pw.BoxDecoration(
+                      color: PdfColor.fromHex('#0B7A75'),
+                      borderRadius: const pw.BorderRadius.only(
+                        topLeft: pw.Radius.circular(80),
                       ),
                     ),
-                    pw.SizedBox(height: 5),
-                    pw.Text(
-                      profile?.phone ?? '',
-                      style: pw.TextStyle(color: PdfColors.white, fontSize: 9),
-                    ),
-                    pw.Text(
-                      profile?.email ?? '',
-                      style: pw.TextStyle(color: PdfColors.white, fontSize: 9),
-                    ),
-                  ],
-                ),
-              ),
-
-              // Company name (left)
-              pw.Positioned(
-                left: 40,
-                bottom: 25,
-                child: pw.Text(
-                  profile?.name ?? '',
-                  style: pw.TextStyle(
-                    color: PdfColors.white,
-                    fontWeight: pw.FontWeight.bold,
-                    fontSize: 10,
                   ),
                 ),
-              ),
-            ],
-          ),
-        ),
+
+                pw.Positioned(
+                  right: 40,
+                  bottom: 25,
+                  child: pw.Column(
+                    children: [
+                      pw.Text(
+                        profile?.name ?? '',
+                        style: pw.TextStyle(
+                          color: PdfColors.white,
+                          fontWeight: pw.FontWeight.bold,
+                          fontSize: 10,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                pw.Positioned(
+                  left: 40,
+                  bottom: 25,
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text(
+                        "Get in Touch",
+                        style: pw.TextStyle(
+                          color: PdfColors.white,
+                          fontWeight: pw.FontWeight.bold,
+                          fontSize: 11,
+                        ),
+                      ),
+                      pw.SizedBox(height: 5),
+                      pw.Text(
+                        profile?.phone ?? '',
+                        style: pw.TextStyle(color: PdfColors.white, fontSize: 9),
+                      ),
+                      pw.Text(
+                        profile?.email ?? '',
+                        style: pw.TextStyle(color: PdfColors.white, fontSize: 9),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+
+
+
         build: (context) {
           final items = (invoice.items as List? ?? [])
               .map((e) => e is ItemModel ? e : ItemModel.fromJson(e))
@@ -508,6 +512,31 @@ class PdfGenerators6 {
                       invoice.notes ?? '-',
                       style: pw.TextStyle(fontSize: 9),
                     ),
+                    if (signatureImage != null)
+                      pw.Align(
+                        alignment: pw.Alignment.bottomRight,
+                        child: pw.Column(
+                          crossAxisAlignment: pw.CrossAxisAlignment.center,
+                          children: [
+                            pw.Container(
+                              width: 120,
+                              height: 60,
+                              child: pw.Image(
+                                signatureImage,
+                                fit: pw.BoxFit.contain,
+                              ),
+                            ),
+                            pw.SizedBox(height: 6),
+                            pw.Text(
+                              "Authorized Signature",
+                              style: pw.TextStyle(
+                                fontSize: 14,
+                                fontWeight: pw.FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -557,7 +586,6 @@ class PdfGenerators6 {
     String currency,
     InvoiceModel invoice,
   ) {
-
     // ✅ Combine SL + dynamic + Total
     final headerTitles = _getHeaders(invoice);
     final headers = ['SL', ...headerTitles];

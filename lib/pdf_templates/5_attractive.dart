@@ -5,6 +5,7 @@ import 'package:invoice/data_storage/InvoiceStorage.dart';
 import 'package:invoice/models/invoice_model.dart';
 import 'package:invoice/models/item_model.dart';
 import 'package:invoice/models/profile_model.dart';
+import 'package:invoice/utils/signature_helper.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
@@ -57,10 +58,15 @@ class PdfGenerators5 {
       ),
     );
 
+    final settings = AppData().settings;
     final String currency = invoice.currencySymbol ?? '₹';
     final PdfColor headerBlue = PdfColor.fromHex('#003366');
     final PdfColor lightBlue = PdfColor.fromHex('#E8F0FE');
     final PdfColor accentBlue = PdfColor.fromHex('#0055A4');
+
+    final pw.MemoryImage? signatureImage = SignatureHelper.fromBase64(
+      settings.signatureBase64,
+    );
 
     pdf.addPage(
       pw.MultiPage(
@@ -249,6 +255,31 @@ class PdfGenerators5 {
 
             pw.SizedBox(height: 30),
 
+            if (signatureImage != null)
+              pw.Align(
+                alignment: pw.Alignment.centerRight,
+                child: pw.Column(
+                  mainAxisAlignment: pw.MainAxisAlignment.end,
+                  children: [
+                    pw.Container(
+                      width: 130,
+                      height: 65,
+                      child: pw.Image(signatureImage, fit: pw.BoxFit.contain),
+                    ),
+                    pw.SizedBox(height: 6),
+                    pw.Text(
+                      "Authorized Signature",
+                      style: pw.TextStyle(
+                        fontSize: 11,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+            pw.SizedBox(height: 10),
+
             // FOOTER
             pw.Container(
               width: double.infinity,
@@ -298,8 +329,6 @@ class PdfGenerators5 {
     PdfColor accentBlue,
     InvoiceModel invoice,
   ) {
-    final settings = AppData().settings;
-
     final headers = _getHeaders(invoice);
 
     // ✅ Rename this to `rows` to avoid collision

@@ -34,7 +34,7 @@ class SettingTile extends StatelessWidget {
 
     // 🔹 Responsive values
     final double paddingH = screenWidth * 0.03; // 3% of width
-    final double paddingV = screenHeight * 0.015; // 1.5% of height
+    final double paddingV = screenHeight * 0.01; // 1.5% of height
     final double iconRadius = isMobile ? 20 : isTablet ? 24 : 28;
     final double iconSize = isMobile ? 20 : isTablet ? 24 : 28;
     final double titleFont = isMobile ? 15 : isTablet ? 16 : 18;

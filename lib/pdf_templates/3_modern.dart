@@ -5,6 +5,7 @@ import 'package:invoice/app_data/app_data.dart';
 import 'package:invoice/data_storage/InvoiceStorage.dart';
 import 'package:invoice/models/invoice_model.dart';
 import 'package:invoice/models/item_model.dart';
+import 'package:invoice/utils/signature_helper.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:path_provider/path_provider.dart';
@@ -282,77 +283,118 @@ class PdfGenerator3 {
     );
   }
 
-  // --- Footer Section ---
   static pw.Widget _buildFooter(
-    pw.Context context,
-    InvoiceModel invoice,
-    dynamic settings,
-    PdfColor darkBlue,
-    PdfColor accentBlue,
-  ) {
+      pw.Context context,
+      InvoiceModel invoice,
+      dynamic settings,
+      PdfColor darkBlue,
+      PdfColor accentBlue,
+      ) {
+    if (context.pageNumber != context.pagesCount) return pw.SizedBox();
+
+    final profile = AppData().profile;
+    final showBank = settings.showBank == true;
     final showTerms = settings.showTerms == true;
     final showNotes = settings.showNotes == true;
-    final hasTerms = invoice.terms?.toString().trim().isNotEmpty == true;
-    final hasNotes = invoice.notes?.toString().trim().isNotEmpty == true;
 
-    if (context.pageNumber != context.pagesCount) return pw.SizedBox();
-    if ((!showTerms && !showNotes) || (!hasTerms && !hasNotes)) {
-      return pw.SizedBox();
-    }
+    final hasTerms = (invoice.terms?.trim().isNotEmpty ?? false);
+    final hasNotes = (invoice.notes?.trim().isNotEmpty ?? false);
+
+    final signatureImage = SignatureHelper.fromBase64(settings.signatureBase64);
 
     return pw.Container(
-      padding: const pw.EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+      padding: const pw.EdgeInsets.symmetric(horizontal: 24, vertical: 14),
       decoration: const pw.BoxDecoration(
         border: pw.Border(
           top: pw.BorderSide(color: PdfColors.grey400, width: 0.5),
         ),
       ),
-      child: pw.Column(
+      child: pw.Row(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
+        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
         children: [
-          if (showTerms && hasTerms) ...[
-            pw.Text(
-              "TERMS & CONDITIONS",
-              style: pw.TextStyle(
-                fontSize: 11,
-                fontWeight: pw.FontWeight.bold,
-                color: darkBlue,
-              ),
-            ),
-            pw.SizedBox(height: 4),
-            pw.Text(
-              invoice.terms ?? '',
-              style: const pw.TextStyle(fontSize: 9),
-            ),
-            pw.SizedBox(height: 8),
-          ],
-          if (showNotes && hasNotes) ...[
-            pw.Text(
-              "NOTES",
-              style: pw.TextStyle(
-                fontSize: 11,
-                fontWeight: pw.FontWeight.bold,
-                color: darkBlue,
-              ),
-            ),
-            pw.SizedBox(height: 4),
-            pw.Text(
-              invoice.notes ?? '',
-              style: const pw.TextStyle(fontSize: 9),
-            ),
-          ],
-          pw.SizedBox(height: 12),
-          pw.Divider(color: PdfColors.grey400, height: 1),
-          pw.Center(
-            child: pw.Text(
-              "Thank you for your business!",
-              style: pw.TextStyle(
-                fontSize: 10,
-                color: accentBlue,
-                fontWeight: pw.FontWeight.bold,
-              ),
+          // ---------- LEFT SECTION (Bank + Terms + Notes) ----------
+          pw.Expanded(
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                if (showBank && profile != null) ...[
+                  pw.Text(
+                    "Bank Details",
+                    style: pw.TextStyle(
+                      fontSize: 14,
+                      fontWeight: pw.FontWeight.bold,
+                    ),
+                  ),
+                  pw.SizedBox(height: 4),
+                  if ((profile.bankName).toString().trim().isNotEmpty)
+                    pw.Text("Bank Name: ${profile.bankName}", style: const pw.TextStyle(fontSize: 12)),
+                  if ((profile.accountHolder).toString().trim().isNotEmpty)
+                    pw.Text("Account Holder: ${profile.accountHolder}", style: const pw.TextStyle(fontSize: 12)),
+                  if ((profile.accountNumber).toString().trim().isNotEmpty)
+                    pw.Text("Account Number: ${profile.accountNumber}", style: const pw.TextStyle(fontSize: 12)),
+                  if ((profile.ifsc).toString().trim().isNotEmpty)
+                    pw.Text("IFSC Code: ${profile.ifsc}", style: const pw.TextStyle(fontSize: 12)),
+                  if ((profile.upi).toString().trim().isNotEmpty)
+                    pw.Text("UPI ID: ${profile.upi}", style: const pw.TextStyle(fontSize: 12)),
+                  pw.SizedBox(height: 10),
+                ],
+
+                if (showTerms && hasTerms) ...[
+                  pw.Text(
+                    "TERMS & CONDITIONS",
+                    style: pw.TextStyle(
+                      fontWeight: pw.FontWeight.bold,
+                      fontSize: 11,
+                      color: darkBlue,
+                    ),
+                  ),
+                  pw.SizedBox(height: 4),
+                  pw.Text(
+                    invoice.terms ?? "",
+                    style: const pw.TextStyle(fontSize: 9),
+                  ),
+                  pw.SizedBox(height: 10),
+                ],
+
+                if (showNotes && hasNotes) ...[
+                  pw.Text(
+                    "NOTES",
+                    style: pw.TextStyle(
+                      fontWeight: pw.FontWeight.bold,
+                      fontSize: 11,
+                      color: darkBlue,
+                    ),
+                  ),
+                  pw.SizedBox(height: 4),
+                  pw.Text(
+                    invoice.notes ?? "",
+                    style: const pw.TextStyle(fontSize: 9),
+                  ),
+                ],
+              ],
             ),
           ),
+
+          // ---------- RIGHT SIDE: Signature aligned next to Notes ----------
+          if (signatureImage != null)
+            pw.Column(
+              children: [
+                pw.Container(
+                  width: 130,
+                  height: 65,
+                  child: pw.Image(signatureImage, fit: pw.BoxFit.contain),
+                ),
+                pw.SizedBox(height: 6),
+                pw.Text(
+                  "Authorized Signature",
+                  style: pw.TextStyle(
+                    fontSize: 11,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
         ],
       ),
     );

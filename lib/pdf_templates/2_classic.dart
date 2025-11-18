@@ -4,6 +4,7 @@ import 'package:invoice/app_data/app_data.dart';
 import 'package:invoice/data_storage/InvoiceStorage.dart';
 import 'package:invoice/models/invoice_model.dart';
 import 'package:invoice/models/item_model.dart';
+import 'package:invoice/utils/signature_helper.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
@@ -62,6 +63,10 @@ class PdfGenerator2 {
     final greyText = PdfColors.grey600;
 
     double toDouble(dynamic val) => double.tryParse(val?.toString() ?? '') ?? 0;
+
+    final pw.MemoryImage? signatureImage =
+    SignatureHelper.fromBase64(settings.signatureBase64);
+
 
     pdf.addPage(
       pw.MultiPage(
@@ -215,6 +220,31 @@ class PdfGenerator2 {
                     "Terms & Conditions",
                     invoice.terms ?? "Terms & Conditions",
                   ),
+                if (signatureImage != null)
+                  pw.Align(
+                    alignment: pw.Alignment.bottomRight,
+                    child: pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.center,
+                      children: [
+                        pw.Container(
+                          width: 120,
+                          height: 60,
+                          child: pw.Image(
+                            signatureImage,
+                            fit: pw.BoxFit.contain,
+                          ),
+                        ),
+                        pw.SizedBox(height: 6),
+                        pw.Text(
+                          "Authorized Signature",
+                          style: pw.TextStyle(
+                            fontSize: 14,
+                            fontWeight: pw.FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
               ],
             ),
           );
@@ -230,13 +260,6 @@ class PdfGenerator2 {
 
     return file;
   }
-
-  // 🔹 Helper Widgets
-  static pw.Widget _divider() => pw.Container(
-    height: 1,
-    color: PdfColors.grey300,
-    margin: const pw.EdgeInsets.symmetric(vertical: 8),
-  );
 
   static pw.Widget _buildInfoRow(String label, dynamic value) => pw.Padding(
     padding: const pw.EdgeInsets.symmetric(vertical: 2),

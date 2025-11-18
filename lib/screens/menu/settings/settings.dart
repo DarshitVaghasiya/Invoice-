@@ -49,6 +49,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       descTitle: loadedSettings.descTitle,
       qtyTitle: loadedSettings.qtyTitle,
       rateTitle: loadedSettings.rateTitle,
+      signatureBase64: loadedSettings.signatureBase64,
     );
 
     if (loadedSettings.selectedTemplate.isEmpty) {
@@ -80,8 +81,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     bool isTablet = screenWidth >= 600 && screenWidth < 1000;
 
     double horizontalPadding = screenWidth * 0.05; // 5% of width
-    double verticalPadding = screenHeight * 0.03; // 3% of height
-    double spacing = screenHeight * 0.02; // 2% of height
+    double verticalPadding = screenWidth * 0.03; // 5% of width
+    double spacing = screenHeight * 0.01; // 2% of height
 
     double titleFontSize = isMobile
         ? screenWidth * 0.06
@@ -211,13 +212,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       await saveSettings(settings!);
                     },
                   ),
-               /*   SettingTile(
+                  SettingTile(
                     title: "Add Signature",
                     icon: Icons.edit_document,
                     onTap: () async {
                       final existingSignature =
                           AppData().settings.signatureBase64;
 
+                      final width = MediaQuery.of(context).size.width;
+
+                      final bool isMobile = width < 600; // 👈 Mobile check
+
+                      // ⭐ Force landscape ONLY for mobile
+                      if (isMobile) {
+                        await SystemChrome.setPreferredOrientations([
+                          DeviceOrientation.landscapeLeft,
+                          DeviceOrientation.landscapeRight,
+                        ]);
+                      }
+
+                      // Open signature screen
                       final String? signatureBase64 = await Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -227,6 +241,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                       );
 
+                      // ⭐ Restore portrait ONLY for mobile
+                      if (isMobile) {
+                        await SystemChrome.setPreferredOrientations([
+                          DeviceOrientation.portraitUp,
+                          DeviceOrientation.portraitDown,
+                        ]);
+                      }
+
+                      // Save signature if returned
                       if (signatureBase64 != null) {
                         setState(() {
                           settings = settings!.copyWith(
@@ -237,7 +260,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       }
                     },
                   ),
-*/
+
                   SettingTile(
                     title: "FAQ",
                     icon: Icons.info_outline,
