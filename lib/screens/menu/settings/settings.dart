@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:invoice/app_data/app_data.dart';
 import 'package:invoice/models/settings_model.dart';
+import 'package:invoice/screens/menu/settings/Add_Custom_Field/add_custom_fields.dart';
 import 'package:invoice/screens/menu/settings/Signature/signature.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
@@ -118,7 +119,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         backgroundColor: const Color(0xFFF0F2F5),
         elevation: 0,
         scrolledUnderElevation: 0,
-        foregroundColor: Colors.black,
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -152,6 +152,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       }
                     },
                   ),
+               /*   SettingTile(
+                    title: "Add Custom Fields",
+                    icon: Icons.text_fields,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const AddCustomFields()),
+                      );
+                    },
+                  ),*/
                   SettingTile(
                     title: "Change Invoice Form Title",
                     icon: Icons.label_important_outline,

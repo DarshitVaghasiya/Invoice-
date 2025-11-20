@@ -28,6 +28,9 @@ class ItemCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    double screenWidth = MediaQuery.of(context).size.width;
+    double iconSize = screenWidth < 380 ? 20 : 25;
+
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8),
       decoration: BoxDecoration(
@@ -90,7 +93,7 @@ class ItemCard extends StatelessWidget {
                       textColor: Colors.black,
                       borderRadius: BorderRadius.circular(8),
                       icon: Icons.arrow_drop_down_sharp,
-                      iconSize: 25,
+                      iconSize: iconSize,
                       onTap: () async {
                         final selectedItem = await Navigator.push(
                           context,
@@ -151,6 +154,7 @@ class ItemCard extends StatelessWidget {
                     ),
                   ],
                 ),
+
               ],
             ),
           ),

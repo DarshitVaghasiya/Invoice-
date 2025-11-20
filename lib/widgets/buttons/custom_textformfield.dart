@@ -83,6 +83,8 @@ class textFormField extends StatelessWidget {
           suffixText: suffixText,
           prefixIcon: prefixIcon,
           suffixIcon: suffixIcon,
+          fillColor: Colors.white,
+          filled: true,
           contentPadding: contentPadding,
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
           enabledBorder: OutlineInputBorder(

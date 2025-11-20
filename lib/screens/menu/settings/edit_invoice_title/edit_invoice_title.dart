@@ -96,10 +96,10 @@ class _EditTitleState extends State<EditTitle> {
         final double titleFontSize = isMobile ? 24 : 28;
 
         return Scaffold(
-          backgroundColor: Colors.white,
+          backgroundColor: const Color(0xFFF0F2F5),
           appBar: AppBar(
             elevation: 0,
-            backgroundColor: Colors.white,
+            backgroundColor: const Color(0xFFF0F2F5),
             foregroundColor: Colors.black,
             title:  Text(
               "Item Titles",
