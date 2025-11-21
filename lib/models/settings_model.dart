@@ -9,12 +9,13 @@ class SettingsModel {
   String qtyTitle;
   String rateTitle;
   String? signatureBase64;
-
+  List<String> customFields;
 
   SettingsModel({
+    this.customFields = const [],
     this.showTax = false,
     this.showPurchaseNo = false,
-    this.showBank = false,
+    this.showBank = true,
     this.showNotes = false,
     this.showTerms = false,
     this.selectedTemplate = "Simple",
@@ -26,9 +27,10 @@ class SettingsModel {
 
   factory SettingsModel.fromJson(Map<String, dynamic> json) {
     return SettingsModel(
+      customFields: List<String>.from(json['customFields'] ?? []),
       showTax: json["showTax"] ?? false,
       showPurchaseNo: json["showPurchaseNo"] ?? false,
-      showBank: json["showBank"] ?? false,
+      showBank: json["showBank"] ?? true,
       showNotes: json["showNotes"] ?? false,
       showTerms: json["showTerms"] ?? false,
       selectedTemplate: json["selectedTemplate"] ?? "Simple",
@@ -41,6 +43,7 @@ class SettingsModel {
 
   Map<String, dynamic> toJson() {
     return {
+      "customFields": customFields,
       "showTax": showTax,
       "showPurchaseNo": showPurchaseNo,
       "showBank": showBank,
@@ -56,6 +59,7 @@ class SettingsModel {
 
   /// ✅ Add this method
   SettingsModel copyWith({
+    List<String>? customFields,
     bool? showTax,
     bool? showPurchaseNo,
     bool? showBank,
@@ -68,6 +72,7 @@ class SettingsModel {
     String? signatureBase64,
   }) {
     return SettingsModel(
+      customFields: customFields ?? this.customFields,
       showTax: showTax ?? this.showTax,
       showPurchaseNo: showPurchaseNo ?? this.showPurchaseNo,
       showBank: showBank ?? this.showBank,
@@ -80,5 +85,4 @@ class SettingsModel {
       signatureBase64: signatureBase64 ?? this.signatureBase64,
     );
   }
-
 }

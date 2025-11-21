@@ -12,6 +12,7 @@ class InvoiceModel {
   String descLabel;
   String qtyLabel;
   String rateLabel;
+  Map<String, String> customLabels;
   List<ItemModel> items;
   double subtotal;
   String discount;
@@ -42,6 +43,7 @@ class InvoiceModel {
     required this.descLabel,
     required this.qtyLabel,
     required this.rateLabel,
+    required this.customLabels,
     required this.items,
     required this.subtotal,
     required this.discount,
@@ -74,9 +76,8 @@ class InvoiceModel {
       descLabel: json['descLabel'] ?? "Product",
       qtyLabel: json['qtyLabel'] ?? "Qty",
       rateLabel: json['rateLabel'] ?? "Price",
-      items: (json['items'] as List? ?? [])
-          .map((e) => e is ItemModel ? e : ItemModel.fromJson(e))
-          .toList(),
+      customLabels: Map<String, String>.from(json["customLabels"] ?? {}),
+      items: (json["items"] as List).map((e) => ItemModel.fromJson(e)).toList(),
       subtotal: (json['subtotal'] ?? 0).toDouble(),
       discount: json['discount'] ?? "0",
       discountAmount: (json['discountAmount'] ?? 0).toDouble(),
@@ -107,6 +108,7 @@ class InvoiceModel {
     "descLabel": descLabel,
     "qtyLabel": qtyLabel,
     "rateLabel": rateLabel,
+    "customLabels": customLabels,
     "items": items.map((e) => e.toJson()).toList(),
     "subtotal": subtotal,
     "discount": discount,
@@ -143,6 +145,7 @@ class InvoiceModel {
     String? discount,
     double? discountAmount,
     String? discountType,
+    Map<String, String>? customLabels,
     String? tax,
     double? taxAmount,
     String? taxType,
@@ -167,6 +170,7 @@ class InvoiceModel {
       descLabel: descLabel ?? this.descLabel,
       qtyLabel: qtyLabel ?? this.qtyLabel,
       rateLabel: rateLabel ?? this.rateLabel,
+      customLabels: customLabels ?? this.customLabels,
       items: items ?? this.items,
       subtotal: subtotal ?? this.subtotal,
       discount: discount ?? this.discount,

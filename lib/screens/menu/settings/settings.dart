@@ -152,18 +152,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       }
                     },
                   ),
-               /*   SettingTile(
-                    title: "Add Custom Fields",
-                    icon: Icons.text_fields,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const AddCustomFields()),
-                      );
-                    },
-                  ),*/
                   SettingTile(
-                    title: "Change Invoice Form Title",
+                    title: "Add Items Fields And Edit Title",
                     icon: Icons.label_important_outline,
                     onTap: () {
                       Navigator.push(

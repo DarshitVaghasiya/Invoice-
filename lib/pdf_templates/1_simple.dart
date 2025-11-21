@@ -584,46 +584,82 @@ class PdfGenerator1 {
 
   // Item table now requires invoice so header labels can be dynamic
   static pw.Widget _itemTable(
-    InvoiceModel invoice,
-    List<ItemModel> items,
-    String currency,
-    PdfColor headerBg,
-  ) {
+      InvoiceModel invoice,
+      List<ItemModel> items,
+      String currency,
+      PdfColor headerBg,
+      ) {
     double toDouble(dynamic val) => double.tryParse(val?.toString() ?? '') ?? 0;
 
-    final headers = _getHeaders(invoice);
+    // 🔥 Collect all unique custom field names
+    final Set<String> customFieldNames = {};
+    for (var item in items) {
+      customFieldNames.addAll(item.customControllers.keys);
+    }
+    final customFieldsList = customFieldNames.toList();
+
+    // 🔥 Build header dynamically
+    final headers = [
+      "Description",
+      ...customFieldsList,
+      "Qty",
+      "Rate",
+      "Amount",
+    ];
+
+    // 🔥 Dynamic column widths
+    final colWidths = <int, pw.TableColumnWidth>{
+      0: const pw.FlexColumnWidth(6), // Description
+    };
+
+    // Custom fields (center aligned columns)
+    for (int i = 0; i < customFieldsList.length; i++) {
+      colWidths[i + 1] = const pw.FlexColumnWidth(1.5);
+    }
+
+    final base = customFieldsList.length;
+    colWidths[base + 1] = const pw.FlexColumnWidth(1.5); // Qty
+    colWidths[base + 2] = const pw.FlexColumnWidth(1.5); // Rate
+    colWidths[base + 3] = const pw.FlexColumnWidth(1.8); // Amount
 
     return pw.Table(
-      columnWidths: {
-        0: const pw.FlexColumnWidth(4),
-        1: const pw.FlexColumnWidth(1.5),
-        2: const pw.FlexColumnWidth(1.5),
-        3: const pw.FlexColumnWidth(1.8),
-      },
+      columnWidths: colWidths,
+      defaultVerticalAlignment: pw.TableCellVerticalAlignment.middle,
       children: [
-        // 🔵 HEADER (Same as your screenshot)
+        // 🔵 HEADER ROW
         pw.TableRow(
-          decoration: pw.BoxDecoration(
-            color: headerBg, // dark background
-          ),
-          children: [
-            _headerCell(headers[0]),
-            _headerCell(headers[1], align: pw.TextAlign.center),
-            _headerCell(headers[2], align: pw.TextAlign.center),
-            _headerCell(headers[3], align: pw.TextAlign.right),
-          ],
+          decoration: pw.BoxDecoration(color: headerBg),
+          children: headers.map((h) {
+            return _headerCell(
+              h,
+              align: customFieldsList.contains(h)
+                  ? pw.TextAlign.center // Custom fields center
+                  : (h == "Qty" || h == "Rate"
+                  ? pw.TextAlign.center // Qty & Rate center
+                  : (h == "Amount"
+                  ? pw.TextAlign.right // ⭐ Amount right
+                  : pw.TextAlign.left)), // Description left
+            );
+
+          }).toList(),
         ),
 
-        // 🔵 ROWS
-        ...items.map((e) {
-          final desc = e.desc.text.trim();
-          final qty = toDouble(e.qty.text);
-          final rate = toDouble(e.rate.text);
+        // 🔵 ITEM ROWS
+        ...items.map((item) {
+          final qty = toDouble(item.qty.text);
+          final rate = toDouble(item.rate.text);
           final amt = qty * rate;
 
           return pw.TableRow(
             children: [
-              _rowCell(desc),
+              _rowCell(item.desc.text, align: pw.TextAlign.left),
+
+              // 🔥 Custom fields → Center alignment
+              ...customFieldsList.map((field) {
+                final value = item.customControllers[field]?.text ?? "-";
+                return _rowCell(value, align: pw.TextAlign.center);
+              }),
+
               _rowCell(qty.toStringAsFixed(0), align: pw.TextAlign.center),
               _rowCell(
                 "$currency${rate.toStringAsFixed(2)}",
@@ -639,6 +675,8 @@ class PdfGenerator1 {
       ],
     );
   }
+
+
 
   static pw.Widget _headerCell(
     String text, {

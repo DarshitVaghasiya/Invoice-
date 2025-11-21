@@ -1,5 +1,6 @@
 import 'package:currency_picker/currency_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:invoice/Screens/Menu/Settings/settings.dart';
 import 'package:invoice/app_data/app_data.dart';
 import 'package:invoice/models/customer_model.dart';
 import 'package:invoice/models/invoice_model.dart';
@@ -47,9 +48,11 @@ class _InvoiceFormPageState extends State<InvoiceFormPage> {
   List<CustomerModel> customers = [];
   CustomerModel? selectedCustomer;
   Currency? selectedCurrency;
+  final settings = AppData().settings;
 
   // Labels
   String descLabel = "Products", qtyLabel = "Qty", rateLabel = "Price";
+  Map<String, String>? customLabels;
 
   String currencySymbol = '\$';
 
@@ -103,18 +106,19 @@ class _InvoiceFormPageState extends State<InvoiceFormPage> {
   }
 
   Future<void> _loadLabels() async {
-    final settings = AppData().settings;
+    // If editing old invoice, do nothing
+    if (widget.existingInvoice != null) return;
 
+    // New invoice → load settings
     setState(() {
-      descLabel = settings.descTitle.isNotEmpty == true
+      descLabel = settings.descTitle.isNotEmpty
           ? settings.descTitle
           : "Product";
-      qtyLabel = settings.qtyTitle.isNotEmpty == true
-          ? settings.qtyTitle
-          : "Qty";
-      rateLabel = settings.rateTitle.isNotEmpty == true
-          ? settings.rateTitle
-          : "Price";
+      qtyLabel = settings.qtyTitle.isNotEmpty ? settings.qtyTitle : "Qty";
+      rateLabel = settings.rateTitle.isNotEmpty ? settings.rateTitle : "Price";
+
+      // Custom labels (Map<String,String>)
+      customLabels = {for (var f in settings.customFields) f: f};
     });
   }
 
@@ -123,9 +127,28 @@ class _InvoiceFormPageState extends State<InvoiceFormPage> {
   }
 
   void _addItem() {
-    setState(() {
-      items.add(ItemModel(desc: '', qty: '', rate: ''));
-    });
+    // NEW invoice → take settings fields
+    if (widget.existingInvoice == null) {
+      final fields = List<String>.from(AppData().settings.customFields);
+      setState(
+        () => items.add(
+          ItemModel(desc: '', qty: '', rate: '', customFields: fields),
+        ),
+      );
+      return;
+    }
+    final fields = customLabels?.keys.toList() ?? [];
+    // EDIT invoice → DO NOT ADD CUSTOM FIELDS
+    setState(
+      () => items.add(
+        ItemModel(
+          desc: '',
+          qty: '',
+          rate: '',
+          customFields: fields, // 👈 No fields for edit mode
+        ),
+      ),
+    );
   }
 
   double get subtotal => items.fold(
@@ -191,6 +214,7 @@ class _InvoiceFormPageState extends State<InvoiceFormPage> {
     descLabel = i.descLabel;
     qtyLabel = i.qtyLabel;
     rateLabel = i.rateLabel;
+    customLabels = i.customLabels;
 
     // Reset visibility flags
     showDiscount = false;
@@ -219,7 +243,7 @@ class _InvoiceFormPageState extends State<InvoiceFormPage> {
       shippingController.text = shippingVal;
       showShipping = true;
     }
-    items = List<ItemModel>.from(i.items);
+    items = i.items.map((e) => ItemModel.fromJson(e.toJson())).toList();
 
     currencySymbol = i.currencySymbol ?? '\$'; // default fallback
     if (i.currencyCode != null) {
@@ -243,6 +267,9 @@ class _InvoiceFormPageState extends State<InvoiceFormPage> {
       descLabel: descLabel,
       qtyLabel: qtyLabel,
       rateLabel: rateLabel,
+      customLabels: widget.existingInvoice != null
+          ? (customLabels ?? {})
+          : {for (var f in settings.customFields) f: f},
       items: items,
       subtotal: subtotal,
       discount: discountController.text,
@@ -472,26 +499,25 @@ class _InvoiceFormPageState extends State<InvoiceFormPage> {
 
           // ADD BUTTONS
           Row(
-            mainAxisAlignment: MainAxisAlignment.start,
             children: [
               if (!showDiscount)
                 CustomIconButton(
                   label: "+ Discount",
-                  padding: EdgeInsets.symmetric(horizontal: 6),
+                  backgroundColor: Colors.transparent,
                   textColor: const Color(0xFF009A75),
                   onTap: () => setState(() => showDiscount = true),
                 ),
               if (!showTax)
                 CustomIconButton(
                   label: "+ Tax",
-                  padding: EdgeInsets.symmetric(horizontal: 6),
+                  backgroundColor: Colors.transparent,
                   textColor: const Color(0xFF009A75),
                   onTap: () => setState(() => showTax = true),
                 ),
               if (!showShipping)
                 CustomIconButton(
                   label: "+ Shipping",
-                  padding: EdgeInsets.symmetric(horizontal: 6),
+                  backgroundColor: Colors.transparent,
                   textColor: const Color(0xFF009A75),
                   onTap: () => setState(() => showShipping = true),
                 ),
@@ -720,13 +746,17 @@ class _InvoiceFormPageState extends State<InvoiceFormPage> {
           children: [
             for (var e in items.asMap().entries)
               ItemCard(
+                key: ValueKey(e.value),
                 index: e.key,
                 item: e.value,
                 descLabel: descLabel,
                 qtyLabel: qtyLabel,
                 rateLabel: rateLabel,
                 currencySymbol: currencySymbol,
-                onChanged: () => setState(() {}),
+                onChanged: () {
+                  setState(() {});
+                  saveSettings(settings); // If needed
+                },
                 onRemove: () {
                   setState(() {
                     items.removeAt(e.key);
@@ -734,36 +764,13 @@ class _InvoiceFormPageState extends State<InvoiceFormPage> {
                   });
                 },
               ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                CustomIconButton(
-                  label: "Add Line Item",
-                  iconSize: 18,
-                  icon: Icons.add_circle,
-                  textColor: const Color(0xFF009A75),
-                  onTap: _addItem,
-                ),
-                CustomIconButton(
-                  label: "Add Field",
-                  iconSize: 18,
-                  icon: Icons.add_circle,
-                  textColor: const Color(0xFF009A75),
-                  onTap: () async {
-                    final result = await Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const AddCustomFields(),
-                      ),
-                    );
-                    if (result != null) {
-                      setState(() {
-                        // custom fields result handle here
-                      });
-                    }
-                  },
-                ),
-              ],
+
+            CustomIconButton(
+              label: "Add Line Item",
+              iconSize: 18,
+              icon: Icons.add_circle,
+              textColor: const Color(0xFF009A75),
+              onTap: _addItem,
             ),
           ],
         ),

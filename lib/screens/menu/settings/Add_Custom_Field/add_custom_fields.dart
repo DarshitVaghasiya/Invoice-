@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:invoice/app_data/app_data.dart';
 import 'package:invoice/widgets/buttons/custom_elevatedbutton.dart';
 import 'package:invoice/widgets/buttons/custom_textformfield.dart';
 
@@ -37,7 +38,14 @@ class _AddCustomFieldsState extends State<AddCustomFields> {
               icon: Icons.add_circle_outline,
               color: Color(0xFF009A75),
               onPressed: () {
+                final newField = titleController.text.trim();
+                if (newField.isEmpty) return;
 
+                final settings = AppData().settings;
+
+                settings.customFields = [...(settings.customFields), newField];
+
+                Navigator.pop(context, newField);
               },
             ),
           ],

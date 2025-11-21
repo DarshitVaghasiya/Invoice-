@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:invoice/app_data/app_data.dart';
 import 'package:invoice/widgets/buttons/custom_elevatedbutton.dart';
+import 'package:invoice/widgets/buttons/custom_iconbutton.dart';
 import 'package:invoice/widgets/buttons/custom_textformfield.dart';
 
 class EditTitle extends StatefulWidget {
@@ -15,7 +16,8 @@ class _EditTitleState extends State<EditTitle> {
   TextEditingController? qtyController;
   TextEditingController? rateController;
 
-  // bool isLoading = true;
+  // 🔥 Dynamic controllers for custom fields
+  final Map<String, TextEditingController> customFieldControllers = {};
 
   @override
   void initState() {
@@ -24,150 +26,166 @@ class _EditTitleState extends State<EditTitle> {
   }
 
   Future<void> _initializeControllers() async {
-    // Load runtime settings from AppData (model only, not from JSON)
     final settings = AppData().settings;
 
-    // ✅ Default titles
-    const defaultDesc = "Product";
-    const defaultQty = "Qty";
-    const defaultRate = "Price";
-
-    // Initialize controllers
+    // Default labels if empty
     descController = TextEditingController(
-      text: settings.descTitle.isNotEmpty ? settings.descTitle : defaultDesc,
+      text: settings.descTitle.isNotEmpty ? settings.descTitle : "Product",
     );
+
     qtyController = TextEditingController(
-      text: settings.qtyTitle.isNotEmpty ? settings.qtyTitle : defaultQty,
+      text: settings.qtyTitle.isNotEmpty ? settings.qtyTitle : "Qty",
     );
+
     rateController = TextEditingController(
-      text: settings.rateTitle.isNotEmpty ? settings.rateTitle : defaultRate,
+      text: settings.rateTitle.isNotEmpty ? settings.rateTitle : "Price",
     );
 
-    // ✅ Update model if empty (not JSON yet)
-    if (settings.descTitle.isEmpty ||
-        settings.qtyTitle.isEmpty ||
-        settings.rateTitle.isEmpty) {
-      AppData().settings = settings.copyWith(
-        descTitle: defaultDesc,
-        qtyTitle: defaultQty,
-        rateTitle: defaultRate,
-      );
+    // 🔥 Load custom fields from settings
+    for (var field in settings.customFields) {
+      customFieldControllers[field] = TextEditingController(
+        text: field,
+      ); // default = field name itself
     }
+  }
 
-    //setState(() => isLoading = false);
+  void addCustomField() {
+    setState(() {
+      String newFieldName = "Field ${customFieldControllers.length + 1}";
+      customFieldControllers[newFieldName] = TextEditingController(
+        text: newFieldName,
+      );
+    });
   }
 
   Future<void> _saveTitles() async {
-    // ✅ Update runtime model class (not JSON)
-    AppData().settings = AppData().settings.copyWith(
-      descTitle: descController?.text,
-      qtyTitle: qtyController?.text,
-      rateTitle: rateController?.text,
+    final settings = AppData().settings;
+
+    // Update basic fields
+    AppData().settings = settings.copyWith(
+      descTitle: descController!.text,
+      qtyTitle: qtyController!.text,
+      rateTitle: rateController!.text,
     );
 
-    print("🟢 Updated runtime settings: ${AppData().settings.toJson()}");
+    // 🔥 Update custom field names inside model
+    List<String> updatedCustomFields = customFieldControllers.values
+        .map((controller) => controller.text)
+        .toList();
 
-    // ❌ Do NOT save JSON here.
-    // JSON will be updated later via AppData.saveAllData() on app close or settings exit.
-  }
+    AppData().settings = AppData().settings.copyWith(
+      customFields: updatedCustomFields,
+    );
 
-  @override
-  void dispose() {
-    descController?.dispose();
-    qtyController?.dispose();
-    rateController?.dispose();
-    super.dispose();
+    print("Updated Titles: ${AppData().settings.toJson()}");
   }
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isMobile = constraints.maxWidth < 600;
-        final isTablet =
-            constraints.maxWidth >= 600 && constraints.maxWidth < 1000;
-
-        final double horizontalPadding = isMobile
-            ? 16
-            : isTablet
-            ? 40
-            : 100;
-        final double spacing = isMobile ? 12 : 20;
-        final double titleFontSize = isMobile ? 24 : 28;
-
-        return Scaffold(
-          backgroundColor: const Color(0xFFF0F2F5),
-          appBar: AppBar(
-            elevation: 0,
-            backgroundColor: const Color(0xFFF0F2F5),
-            foregroundColor: Colors.black,
-            title:  Text(
-              "Item Titles",
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: titleFontSize,
-              ),
+    return Scaffold(
+      backgroundColor: const Color(0xFFF0F2F5),
+      appBar: AppBar(
+        title: const Text(
+          "Item Titles",
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        backgroundColor: const Color(0xFFF0F2F5),
+        elevation: 0,
+        foregroundColor: Colors.black,
+        actions: [
+          Padding(
+            padding: EdgeInsets.only(right: 10),
+            child: CustomIconButton(
+              label: "Add Field",
+              icon: Icons.add,
+              textColor: Colors.white,
+              backgroundColor: Color(0xFF009A75),
+              onTap: addCustomField, // <-- Proper function call
             ),
-            centerTitle: true,
           ),
-          body: SafeArea(
-            child: SingleChildScrollView(
-              padding: EdgeInsets.symmetric(
-                horizontal: horizontalPadding,
-                vertical: 20,
-              ),
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 600),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      textFormField(
-                        controller: descController!,
-                        labelText: "Description Title",
-                        hintText: "Enter description label (e.g. Product)",
-                      ),
-                      SizedBox(height: spacing),
-                      textFormField(
-                        controller: qtyController!,
-                        labelText: "Quantity Title",
-                        hintText: "Enter quantity label (e.g. Qty)",
-                      ),
-                      SizedBox(height: spacing),
-                      textFormField(
-                        controller: rateController!,
-                        labelText: "Rate Title",
-                        hintText: "Enter rate label (e.g. Price)",
-                      ),
-                      SizedBox(height: spacing * 2.2),
+        ],
+      ),
 
-                      Center(
-                        child: SizedBox(
-                          width: isMobile ? double.infinity : 250,
-                          child: CustomElevatedButton(
-                            icon: Icons.save_rounded,
-                            label: "Save Title",
-                            color: const Color(0xFF009A75),
-                            onPressed: () async {
-                              await _saveTitles();
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          children: [
+            textFormField(
+              controller: descController!,
+              labelText: "Description Title",
+            ),
+            const SizedBox(height: 16),
 
-                              Navigator.pop(context, {
-                                'descLabel': descController!.text,
-                                'qtyLabel': qtyController!.text,
-                                'rateLabel': rateController!.text,
-                              });
-                            },
-                          ),
-                        ),
-                      ),
-                    ],
+            textFormField(
+              controller: qtyController!,
+              labelText: "Quantity Title",
+            ),
+            const SizedBox(height: 16),
+
+            textFormField(controller: rateController!, labelText: "Rate Title"),
+
+            const SizedBox(height: 16),
+
+            // 🔥 Dynamic Custom Fields
+            ...customFieldControllers.entries.map((entry) {
+              final keyName = entry.key;
+
+              return Dismissible(
+                key: Key(keyName),
+                direction: DismissDirection.endToStart,
+
+                // 🔥 Full-width red background with margin & radius
+                background: Container(
+                  margin: const EdgeInsets.only(bottom: 16),   // SAME as child padding
+                  decoration: BoxDecoration(
+                    color: Colors.red,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  alignment: Alignment.centerRight,
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: const Icon(Icons.delete, color: Colors.white, size: 26),
+                ),
+
+                onDismissed: (_) {
+                  setState(() {
+                    customFieldControllers.remove(keyName);
+                  });
+                },
+
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 16),
+                  child: textFormField(
+                    controller: entry.value,
+                    labelText: "Custom Field: $keyName",
                   ),
                 ),
-              ),
+              );
+            }).toList(),
+
+
+            const SizedBox(height: 20),
+
+            CustomElevatedButton(
+              icon: Icons.save_rounded,
+              label: "Save All Titles",
+              color: const Color(0xFF009A75),
+              onPressed: () async {
+                await _saveTitles();
+
+                // Return updated map properly
+                Navigator.pop(context, {
+                  'descLabel': descController!.text,
+                  'qtyLabel': qtyController!.text,
+                  'rateLabel': rateController!.text,
+                  'customLabels': customFieldControllers
+                      .map((key, controller) => MapEntry(key, controller.text))
+                      .cast<String, String>(), // 🔥 FIX here
+                });
+              },
             ),
-          ),
-        );
-      },
+          ],
+        ),
+      ),
     );
   }
 }
