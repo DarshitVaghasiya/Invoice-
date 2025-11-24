@@ -389,60 +389,99 @@ class PdfGenerator2 {
   );
 
   static pw.Widget _itemTable(
-    InvoiceModel invoice,
-    List<ItemModel> items,
-    String currency,
-    PdfColor headerBg,
-  ) {
+      InvoiceModel invoice,
+      List<ItemModel> items,
+      String currency,
+      PdfColor headerBg,
+      ) {
     double toDouble(dynamic val) => double.tryParse(val?.toString() ?? '') ?? 0;
 
-    final headers = _getHeaders(invoice);
+    // 🔥 COLLECT CUSTOM FIELDS
+    final Set<String> customFieldNames = {};
+    for (var item in items) {
+      customFieldNames.addAll(item.customControllers.keys);
+    }
+
+    // 🔥 DEFAULT HEADERS
+    final defaultHeaders = _getHeaders(invoice); // [Desc, Qty, Rate, Amount]
+
+    // 🔥 REARRANGE ORDER → Description + CUSTOM + Qty + Rate + Amount
+    final List<String> headers = [
+      defaultHeaders[0],        // Description
+      ...customFieldNames,      // Custom fields
+      defaultHeaders[1],        // Qty
+      defaultHeaders[2],        // Rate
+      defaultHeaders[3],        // Amount
+    ];
+
+    // 🔥 DYNAMIC COLUMN WIDTHS
+    final Map<int, pw.TableColumnWidth> columnWidths = {};
+    for (int i = 0; i < headers.length; i++) {
+      if (i == 0) {
+        columnWidths[i] = const pw.FlexColumnWidth(5); // Wide Description
+      } else {
+        columnWidths[i] = const pw.FlexColumnWidth(1.5);
+      }
+    }
 
     return pw.Table(
-      border: pw.TableBorder.all(
-        color: PdfColors.grey600,
-        width: 0.6,
-      ),
-      columnWidths: {
-        0: const pw.FlexColumnWidth(4),
-        1: const pw.FlexColumnWidth(1.5),
-        2: const pw.FlexColumnWidth(1.5),
-        3: const pw.FlexColumnWidth(1.8),
-      },
+      border: pw.TableBorder.all(color: PdfColors.grey600, width: 0.6),
+      columnWidths: columnWidths,
       children: [
-        // Header
+        // 🔥 HEADER ROW
         pw.TableRow(
           decoration: pw.BoxDecoration(color: headerBg),
           children: [
-            _headerCell(headers[0]),
-            _headerCell(headers[1], align: pw.TextAlign.center),
-            _headerCell(headers[2], align: pw.TextAlign.center),
-            _headerCell(headers[3], align: pw.TextAlign.right),
+            for (var h in headers)
+              _headerCell(
+                h,
+                align: h == defaultHeaders[0]
+                    ? pw.TextAlign.left
+                    : pw.TextAlign.center,
+              )
           ],
         ),
 
-        // Rows
+        // 🔥 DATA ROWS
         ...items.map((e) {
-          final desc = e.desc.text.trim();
           final qty = toDouble(e.qty.text);
           final rate = toDouble(e.rate.text);
           final amt = qty * rate;
 
           return pw.TableRow(
             children: [
-              _rowCell(desc),
+              // 1️⃣ Description
+              _rowCell(e.desc.text.trim()),
+
+              // 2️⃣ Custom fields (in same order as headers list)
+              for (var fieldName in customFieldNames)
+                _rowCell(
+                  e.customControllers[fieldName]?.text ?? "",
+                  align: pw.TextAlign.center,
+                ),
+
+              // 3️⃣ Qty
               _rowCell(qty.toStringAsFixed(0), align: pw.TextAlign.center),
-              _rowCell("$currency${rate.toStringAsFixed(2)}",
-                  align: pw.TextAlign.center),
-              _rowCell("$currency${amt.toStringAsFixed(2)}",
-                  align: pw.TextAlign.right),
+
+              // 4️⃣ Rate
+              _rowCell(
+                "$currency${rate.toStringAsFixed(2)}",
+                align: pw.TextAlign.center,
+              ),
+
+              // 5️⃣ Amount
+              _rowCell(
+                "$currency${amt.toStringAsFixed(2)}",
+                align: pw.TextAlign.right,
+              ),
             ],
           );
         }),
       ],
     );
-
   }
+
+
 
   static pw.Widget _headerCell(
     String text, {

@@ -329,36 +329,103 @@ class PdfGenerators5 {
     PdfColor accentBlue,
     InvoiceModel invoice,
   ) {
-    final headers = _getHeaders(invoice);
+    // ---------------------------------------------
+    // 🔥 1. Collect all custom fields from all items
+    // ---------------------------------------------
+    final Set<String> customFieldNames = {};
+    for (var item in items) {
+      customFieldNames.addAll(item.customControllers.keys);
+    }
+    final customFieldsList = customFieldNames.toList();
 
-    // ✅ Rename this to `rows` to avoid collision
+    // ---------------------------------------------
+    // 🔥 2. Build final dynamic headers
+    // ---------------------------------------------
+    final defaultHeaders = _getHeaders(invoice);
+
+    final List<String> headers = [
+      defaultHeaders[0], // Description
+      ...customFieldsList, // Dynamic Custom Fields
+      defaultHeaders[1], // Qty
+      defaultHeaders[2], // Rate
+      defaultHeaders[3], // Amount
+    ];
+
+    // ---------------------------------------------
+    // 🔥 3. Build dynamic row data
+    // ---------------------------------------------
     final rows = List.generate(items.isEmpty ? 5 : items.length, (i) {
       if (items.isEmpty) {
         return ['Item', '1', '0.00', '0.00'];
       }
+
       final e = items[i];
       final qty = double.tryParse(e.qty.text) ?? 1;
       final rate = double.tryParse(e.rate.text) ?? 0;
       final total = qty * rate;
+
       return [
         e.desc.text,
+
+        // 🔥 custom field values
+        ...customFieldsList.map((field) {
+          return e.customControllers[field]?.text ?? "-";
+        }),
+
         qty.toStringAsFixed(0),
         "$currency${rate.toStringAsFixed(2)}",
         "$currency${total.toStringAsFixed(2)}",
       ];
     });
 
+    // ---------------------------------------------
+    // 🔥 4. Dynamic column widths
+    // ---------------------------------------------
+    final Map<int, pw.TableColumnWidth> columnWidths = {};
+
+    columnWidths[0] = const pw.FlexColumnWidth(5); // Description
+
+    for (int i = 0; i < customFieldsList.length; i++) {
+      columnWidths[i + 1] = const pw.FlexColumnWidth(1.5);
+    }
+
+    final base = customFieldsList.length;
+
+    columnWidths[base + 1] = const pw.FlexColumnWidth(1.5); // Qty
+    columnWidths[base + 2] = const pw.FlexColumnWidth(1.5); // Rate
+    columnWidths[base + 3] = const pw.FlexColumnWidth(2); // Amount
+
+    // ---------------------------------------------
+    // 🔥 5. Dynamic alignment per column
+    // ---------------------------------------------
+    final Map<int, pw.Alignment> cellAlignments = {
+      0: pw.Alignment.centerLeft, // Description
+    };
+
+    for (int i = 0; i < customFieldsList.length; i++) {
+      cellAlignments[i + 1] = pw.Alignment.center; // Custom fields
+    }
+
+    cellAlignments[base + 1] = pw.Alignment.centerRight; // Qty
+    cellAlignments[base + 2] = pw.Alignment.centerRight; // Rate
+    cellAlignments[base + 3] = pw.Alignment.centerRight; // Amount
+
+    // ---------------------------------------------
+    // 🔥 6. Produce the table
+    // ---------------------------------------------
     return pw.TableHelper.fromTextArray(
       headers: headers,
       data: rows,
-      // ✅ use rows instead of data
       border: null,
       headerDecoration: pw.BoxDecoration(color: accentBlue),
       headerStyle: pw.TextStyle(
         color: PdfColors.white,
         fontWeight: pw.FontWeight.bold,
+        fontSize: 10,
       ),
       cellStyle: const pw.TextStyle(fontSize: 10),
+
+      // alternate row colors
       cellDecoration: (index, data, rowNum) {
         return pw.BoxDecoration(
           color: rowNum % 2 == 0
@@ -366,18 +433,12 @@ class PdfGenerators5 {
               : PdfColors.white,
         );
       },
-      columnWidths: {
-        0: const pw.FlexColumnWidth(4),
-        1: const pw.FlexColumnWidth(1.5),
-        2: const pw.FlexColumnWidth(1.5),
-        3: const pw.FlexColumnWidth(1.8),
-      },
-      cellAlignments: {
-        0: pw.Alignment.centerLeft,
-        1: pw.Alignment.centerRight,
-        2: pw.Alignment.centerRight,
-        3: pw.Alignment.centerRight,
-      },
+
+      // dynamic widths
+      columnWidths: columnWidths,
+
+      // dynamic alignment
+      cellAlignments: cellAlignments,
     );
   }
 

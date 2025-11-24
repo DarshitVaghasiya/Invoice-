@@ -321,7 +321,7 @@ class PdfGenerators6 {
             pw.SizedBox(height: 18),
 
             // Items table header + rows (styled to match)
-            _itemsTableStyled(items, currency, invoice),
+            _itemsTable(items, currency, invoice),
 
             pw.SizedBox(height: 40),
 
@@ -581,41 +581,76 @@ class PdfGenerators6 {
     ),
   );
 
-  static pw.Widget _itemsTableStyled(
-    List<ItemModel> items,
-    String currency,
-    InvoiceModel invoice,
-  ) {
-    // ✅ Combine SL + dynamic + Total
-    final headerTitles = _getHeaders(invoice);
-    final headers = ['SL', ...headerTitles];
+  static pw.Widget _itemsTable(
+      List<ItemModel> items,
+      String currency,
+      InvoiceModel invoice,
+      ) {
+    // ---------------------------------------------
+    // 🔥 1. Collect all unique custom field names
+    // ---------------------------------------------
+    final Set<String> customFieldNames = {};
+    for (var item in items) {
+      customFieldNames.addAll(item.customControllers.keys);
+    }
+    final customFields = customFieldNames.toList();
 
-    // 🧾 Generate table data rows
+    // ---------------------------------------------
+    // 🔥 2. Base headers (Description, Qty, Rate, Amount)
+    // ---------------------------------------------
+    final defaultHeaders = _getHeaders(invoice);
+
+    // ---------------------------------------------
+    // 🔥 3. TABLE HEADERS → SL + Description + Custom Fields + Qty + Rate + Amount
+    // ---------------------------------------------
+    final headers = [
+      'SL',
+      defaultHeaders[0],       // Description
+      ...customFields,         // ⬅ Dynamic custom fields
+      defaultHeaders[1],       // Qty
+      defaultHeaders[2],       // Rate
+      defaultHeaders[3],       // Amount
+    ];
+
+    // ---------------------------------------------
+    // 🔥 4. Build table rows dynamically
+    // ---------------------------------------------
     final tableData = List.generate(items.isEmpty ? 5 : items.length, (i) {
       if (items.isEmpty) {
         return [
-          '0',
+          '00',
           'Item name goes here',
+          ...List.generate(customFields.length, (_) => ''), // custom fields
           '0',
           '$currency.00',
           '$currency.00',
         ];
       }
 
-      final e = items[i];
-      final qty = double.tryParse(e.qty.text) ?? 1;
-      final rate = double.tryParse(e.rate.text) ?? 0;
+      final item = items[i];
+
+      final qty = double.tryParse(item.qty.text) ?? 1;
+      final rate = double.tryParse(item.rate.text) ?? 0;
       final amount = qty * rate;
+
+      // 🔥 fetch each custom field's value for this item
+      final customValues = customFields.map((field) {
+        return item.customControllers[field]?.text ?? '';
+      }).toList();
 
       return [
         (i + 1).toString().padLeft(2, '0'),
-        e.desc.text,
+        item.desc.text,
+        ...customValues, // ⬅ dynamic custom values
         qty.toStringAsFixed(0),
         "$currency${rate.toStringAsFixed(2)}",
         "$currency${amount.toStringAsFixed(2)}",
       ];
     });
 
+    // ---------------------------------------------
+    // 🔥 5. Return final table
+    // ---------------------------------------------
     return pw.TableHelper.fromTextArray(
       headers: headers,
       data: tableData,
@@ -643,20 +678,30 @@ class PdfGenerators6 {
               : PdfColors.white,
         );
       },
+
+      // ---------------------------------------------
+      // 🔥 Column widths adjusted automatically
+      // ---------------------------------------------
       columnWidths: {
-        0: const pw.FixedColumnWidth(25),
-        1: const pw.FlexColumnWidth(4),
-        2: const pw.FlexColumnWidth(1.5),
-        3: const pw.FlexColumnWidth(2),
-        4: const pw.FlexColumnWidth(2),
+        0: const pw.FixedColumnWidth(25), // SL
+        1: const pw.FlexColumnWidth(5),   // Description
+        for (int k = 0; k < customFields.length; k++)
+          (2 + k): const pw.FlexColumnWidth(1.5), // Custom fields
+        (2 + customFields.length): const pw.FlexColumnWidth(1.5), // Qty
+        (3 + customFields.length): const pw.FlexColumnWidth(1.5),   // Rate
+        (4 + customFields.length): const pw.FlexColumnWidth(2),   // Amount
       },
+
       cellAlignments: {
-        0: pw.Alignment.center,
-        1: pw.Alignment.centerLeft,
-        2: pw.Alignment.center,
-        3: pw.Alignment.centerRight,
-        4: pw.Alignment.centerRight,
+        0: pw.Alignment.center, // SL
+        1: pw.Alignment.centerLeft, // Desc
+        for (int k = 0; k < customFields.length; k++)
+          (2 + k): pw.Alignment.center, // Custom fields
+        (2 + customFields.length): pw.Alignment.center, // Qty
+        (3 + customFields.length): pw.Alignment.centerRight, // Rate
+        (4 + customFields.length): pw.Alignment.centerRight, // Amount
       },
     );
   }
+
 }

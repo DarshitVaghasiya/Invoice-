@@ -598,28 +598,29 @@ class PdfGenerator1 {
     }
     final customFieldsList = customFieldNames.toList();
 
+    final defaultHeaders = _getHeaders(invoice); // [Desc, Qty, Rate, Amount]
     // 🔥 Build header dynamically
-    final headers = [
-      "Description",
-      ...customFieldsList,
-      "Qty",
-      "Rate",
-      "Amount",
+    final List<String> headers = [
+      defaultHeaders[0],        // Description
+      ...customFieldNames,     // Custom fields
+      defaultHeaders[1],        // Qty
+      defaultHeaders[2],        // Rate
+      defaultHeaders[3],        // Amount
     ];
 
     // 🔥 Dynamic column widths
     final colWidths = <int, pw.TableColumnWidth>{
-      0: const pw.FlexColumnWidth(6), // Description
+      0: const pw.FlexColumnWidth(5), // Description
     };
 
     // Custom fields (center aligned columns)
     for (int i = 0; i < customFieldsList.length; i++) {
-      colWidths[i + 1] = const pw.FlexColumnWidth(1.5);
+      colWidths[i + 1] = const pw.FlexColumnWidth(1);
     }
 
     final base = customFieldsList.length;
     colWidths[base + 1] = const pw.FlexColumnWidth(1.5); // Qty
-    colWidths[base + 2] = const pw.FlexColumnWidth(1.5); // Rate
+    colWidths[base + 2] = const pw.FlexColumnWidth(1); // Rate
     colWidths[base + 3] = const pw.FlexColumnWidth(1.8); // Amount
 
     return pw.Table(
@@ -629,20 +630,17 @@ class PdfGenerator1 {
         // 🔵 HEADER ROW
         pw.TableRow(
           decoration: pw.BoxDecoration(color: headerBg),
-          children: headers.map((h) {
-            return _headerCell(
-              h,
-              align: customFieldsList.contains(h)
-                  ? pw.TextAlign.center // Custom fields center
-                  : (h == "Qty" || h == "Rate"
-                  ? pw.TextAlign.center // Qty & Rate center
-                  : (h == "Amount"
-                  ? pw.TextAlign.right // ⭐ Amount right
-                  : pw.TextAlign.left)), // Description left
-            );
-
-          }).toList(),
+          children: [
+            for (var h in headers)
+              _headerCell(
+                h,
+                align: h == defaultHeaders[0]
+                    ? pw.TextAlign.left
+                    : pw.TextAlign.center,
+              )
+          ],
         ),
+
 
         // 🔵 ITEM ROWS
         ...items.map((item) {
@@ -667,7 +665,7 @@ class PdfGenerator1 {
               ),
               _rowCell(
                 "$currency${amt.toStringAsFixed(2)}",
-                align: pw.TextAlign.right,
+                align: pw.TextAlign.center,
               ),
             ],
           );

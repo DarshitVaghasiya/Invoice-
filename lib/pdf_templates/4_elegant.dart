@@ -299,17 +299,46 @@ class PdfGenerator4 {
     InvoiceModel invoice,
   ) {
     double toDouble(dynamic val) => double.tryParse(val?.toString() ?? '') ?? 0;
-    final headers = _getHeaders(invoice);
+
+    // 🔥 Collect all custom field names from all items
+    final Set<String> customFieldNames = {};
+    for (var item in items) {
+      customFieldNames.addAll(item.customControllers.keys);
+    }
+    final customFieldsList = customFieldNames.toList();
+
+    // 🔥 Default headers from invoice settings
+    final defaultHeaders = _getHeaders(invoice);
+
+    // 🔥 Final dynamic headers
+    final List<String> headers = [
+      defaultHeaders[0], // Description
+      ...customFieldsList, // Dynamic Custom Fields
+      defaultHeaders[1], // Qty
+      defaultHeaders[2], // Rate
+      defaultHeaders[3], // Amount
+    ];
+
+    // 🔥 Dynamic columnWidths (depends on custom fields)
+    final Map<int, pw.TableColumnWidth> colWidths = {};
+
+    colWidths[0] = const pw.FlexColumnWidth(5); // Description column
+
+    for (int i = 0; i < customFieldsList.length; i++) {
+      colWidths[i + 1] = const pw.FlexColumnWidth(1.5); // Custom fields
+    }
+
+    final base = customFieldsList.length;
+
+    colWidths[base + 1] = const pw.FlexColumnWidth(1.5); // Qty
+    colWidths[base + 2] = const pw.FlexColumnWidth(1.5); // Rate
+    colWidths[base + 3] = const pw.FlexColumnWidth(1.8); // Amount
+
     return pw.Table(
       border: pw.TableBorder.symmetric(outside: pw.BorderSide.none),
-      columnWidths: {
-        0: const pw.FlexColumnWidth(4),
-        1: const pw.FlexColumnWidth(1.5),
-        2: const pw.FlexColumnWidth(1.5),
-        3: const pw.FlexColumnWidth(1.8),
-      },
+      columnWidths: colWidths,
       children: [
-        // Header
+        // 🔵 HEADER ROW
         pw.TableRow(
           decoration: pw.BoxDecoration(
             border: pw.Border(
@@ -317,36 +346,64 @@ class PdfGenerator4 {
             ),
           ),
           children: [
+            // Description
             _tableHeaderCell(headers[0], headerBlue),
+
+            // 🔥 Custom field headers (center)
+            ...customFieldsList.map(
+              (h) =>
+                  _tableHeaderCell(h, headerBlue, align: pw.TextAlign.center),
+            ),
+
+            // Qty, Rate, Amount
             _tableHeaderCell(
-              headers[1],
+              headers[base + 1],
               headerBlue,
               align: pw.TextAlign.center,
             ),
             _tableHeaderCell(
-              headers[2],
+              headers[base + 2],
               headerBlue,
               align: pw.TextAlign.center,
             ),
-            _tableHeaderCell(headers[3], headerBlue, align: pw.TextAlign.right),
+            _tableHeaderCell(
+              headers[base + 3],
+              headerBlue,
+              align: pw.TextAlign.right,
+            ),
           ],
         ),
-        // Rows
+
+        // 🔵 DATA ROWS
         ...items.map((e) {
           final qty = toDouble(e.qty.text);
           final rate = toDouble(e.rate.text);
           final amt = qty * rate;
+
           return pw.TableRow(
             decoration: pw.BoxDecoration(
               border: pw.Border(bottom: pw.BorderSide(color: border, width: 2)),
             ),
             children: [
+              // Description
               _tableCell(e.desc.text),
+
+              // 🔥 Custom Fields (center)
+              ...customFieldsList.map((field) {
+                final value = e.customControllers[field]?.text ?? "-";
+                return _tableCell(value, align: pw.TextAlign.center);
+              }),
+
+              // Qty
               _tableCell(qty.toStringAsFixed(0), align: pw.TextAlign.center),
+
+              // Rate
               _tableCell(
                 "$currency${rate.toStringAsFixed(2)}",
                 align: pw.TextAlign.center,
               ),
+
+              // Amount (right aligned)
               _tableCell(
                 "$currency${amt.toStringAsFixed(2)}",
                 align: pw.TextAlign.right,

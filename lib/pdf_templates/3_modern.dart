@@ -93,45 +93,7 @@ class PdfGenerator3 {
                   pw.SizedBox(height: 20),
 
                   // --- Items Table ---
-                  pw.TableHelper.fromTextArray(
-                    headers: headers,
-                    data: items.map((item) {
-                      final qty = toDouble(item.qty.text);
-                      final rate = toDouble(item.rate.text);
-                      final amount = qty * rate;
-                      return [
-                        item.desc.text,
-                        item.qty.text,
-                        "$currencySymbol${rate.toStringAsFixed(2)}",
-                        "$currencySymbol${amount.toStringAsFixed(2)}",
-                      ];
-                    }).toList(),
-                    headerDecoration: pw.BoxDecoration(color: accentBlue),
-                    headerStyle: pw.TextStyle(
-                      color: PdfColors.white,
-                      fontWeight: pw.FontWeight.bold,
-                      fontSize: 10,
-                    ),
-                    cellStyle: const pw.TextStyle(fontSize: 9),
-                    border: pw.TableBorder.symmetric(
-                      outside: const pw.BorderSide(color: PdfColors.grey300),
-                      inside: const pw.BorderSide(color: PdfColors.grey200),
-                    ),
-                    headerPadding: const pw.EdgeInsets.all(6),
-                    cellPadding: const pw.EdgeInsets.all(6),
-                    cellAlignments: {
-                      0: pw.Alignment.centerLeft,
-                      1: pw.Alignment.center,
-                      2: pw.Alignment.center,
-                      3: pw.Alignment.center,
-                    },
-                    columnWidths: {
-                      0: const pw.FlexColumnWidth(5),
-                      1: const pw.FlexColumnWidth(1.5),
-                      2: const pw.FlexColumnWidth(1.5),
-                      3: const pw.FlexColumnWidth(1.8),
-                    },
-                  ),
+                  _itemTable(invoice,items, currencySymbol, accentBlue),
 
                   pw.SizedBox(height: 16),
 
@@ -189,6 +151,97 @@ class PdfGenerator3 {
     final file = await PdfSaver.savePdfFile(bytes: bytes, fileName: fileName);
 
     return file;
+  }
+
+  static pw.Widget _itemTable(
+    InvoiceModel invoice,
+    List<ItemModel> items,
+    String currencySymbol,
+    PdfColor accentBlue,
+  ) {
+    double toDouble(dynamic val) => double.tryParse(val?.toString() ?? '') ?? 0;
+
+    // 🔥 Extract all custom field names dynamically
+    final Set<String> customFieldNames = {};
+    for (var item in items) {
+      customFieldNames.addAll(item.customControllers.keys);
+    }
+    final customFieldsList = customFieldNames.toList();
+
+    final defaultHeaders = _getHeaders(invoice);
+    // 🔥 Build header list
+    final List<String> headers = [
+      defaultHeaders[0], // Description
+      ...customFieldNames, // Custom fields
+      defaultHeaders[1], // Qty
+      defaultHeaders[2], // Rate
+      defaultHeaders[3], // Amount
+    ];
+
+    // 🔥 Build dynamic alignments
+    final cellAlignments = <int, pw.Alignment>{
+      0: pw.Alignment.centerLeft, // Description
+    };
+
+    for (int i = 0; i < customFieldsList.length; i++) {
+      cellAlignments[i + 1] = pw.Alignment.center; // Custom fields center
+    }
+
+    final base = customFieldsList.length;
+    cellAlignments[base + 1] = pw.Alignment.center; // Qty
+    cellAlignments[base + 2] = pw.Alignment.center; // Rate
+    cellAlignments[base + 3] = pw.Alignment.centerRight; // Amount
+
+    // 🔥 Build dynamic column widths
+    final columnWidths = <int, pw.TableColumnWidth>{
+      0: const pw.FlexColumnWidth(5), // Description
+    };
+
+    for (int i = 0; i < customFieldsList.length; i++) {
+      columnWidths[i + 1] = const pw.FlexColumnWidth(1.5);
+    }
+
+    columnWidths[base + 1] = const pw.FlexColumnWidth(1.5); // Qty
+    columnWidths[base + 2] = const pw.FlexColumnWidth(1.5); // Rate
+    columnWidths[base + 3] = const pw.FlexColumnWidth(1.8); // Amount
+
+    // 🔥 Build the table
+    return pw.TableHelper.fromTextArray(
+      headers: headers,
+      data: items.map((item) {
+        final qty = toDouble(item.qty.text);
+        final rate = toDouble(item.rate.text);
+        final amount = qty * rate;
+
+        return [
+          item.desc.text,
+
+          // Custom field values
+          ...customFieldsList.map(
+            (field) => item.customControllers[field]?.text ?? "-",
+          ),
+
+          qty.toStringAsFixed(0),
+          "$currencySymbol${rate.toStringAsFixed(2)}",
+          "$currencySymbol${amount.toStringAsFixed(2)}",
+        ];
+      }).toList(),
+      headerDecoration: pw.BoxDecoration(color: accentBlue),
+      headerStyle: pw.TextStyle(
+        color: PdfColors.white,
+        fontWeight: pw.FontWeight.bold,
+        fontSize: 10,
+      ),
+      cellStyle: const pw.TextStyle(fontSize: 9),
+      border: pw.TableBorder.symmetric(
+        outside: const pw.BorderSide(color: PdfColors.grey300),
+        inside: const pw.BorderSide(color: PdfColors.grey200),
+      ),
+      headerPadding: const pw.EdgeInsets.all(6),
+      cellPadding: const pw.EdgeInsets.all(6),
+      cellAlignments: cellAlignments,
+      columnWidths: columnWidths,
+    );
   }
 
   // --- Header Section ---
@@ -284,12 +337,12 @@ class PdfGenerator3 {
   }
 
   static pw.Widget _buildFooter(
-      pw.Context context,
-      InvoiceModel invoice,
-      dynamic settings,
-      PdfColor darkBlue,
-      PdfColor accentBlue,
-      ) {
+    pw.Context context,
+    InvoiceModel invoice,
+    dynamic settings,
+    PdfColor darkBlue,
+    PdfColor accentBlue,
+  ) {
     if (context.pageNumber != context.pagesCount) return pw.SizedBox();
 
     final profile = AppData().profile;
@@ -328,15 +381,30 @@ class PdfGenerator3 {
                   ),
                   pw.SizedBox(height: 4),
                   if ((profile.bankName).toString().trim().isNotEmpty)
-                    pw.Text("Bank Name: ${profile.bankName}", style: const pw.TextStyle(fontSize: 12)),
+                    pw.Text(
+                      "Bank Name: ${profile.bankName}",
+                      style: const pw.TextStyle(fontSize: 12),
+                    ),
                   if ((profile.accountHolder).toString().trim().isNotEmpty)
-                    pw.Text("Account Holder: ${profile.accountHolder}", style: const pw.TextStyle(fontSize: 12)),
+                    pw.Text(
+                      "Account Holder: ${profile.accountHolder}",
+                      style: const pw.TextStyle(fontSize: 12),
+                    ),
                   if ((profile.accountNumber).toString().trim().isNotEmpty)
-                    pw.Text("Account Number: ${profile.accountNumber}", style: const pw.TextStyle(fontSize: 12)),
+                    pw.Text(
+                      "Account Number: ${profile.accountNumber}",
+                      style: const pw.TextStyle(fontSize: 12),
+                    ),
                   if ((profile.ifsc).toString().trim().isNotEmpty)
-                    pw.Text("IFSC Code: ${profile.ifsc}", style: const pw.TextStyle(fontSize: 12)),
+                    pw.Text(
+                      "IFSC Code: ${profile.ifsc}",
+                      style: const pw.TextStyle(fontSize: 12),
+                    ),
                   if ((profile.upi).toString().trim().isNotEmpty)
-                    pw.Text("UPI ID: ${profile.upi}", style: const pw.TextStyle(fontSize: 12)),
+                    pw.Text(
+                      "UPI ID: ${profile.upi}",
+                      style: const pw.TextStyle(fontSize: 12),
+                    ),
                   pw.SizedBox(height: 10),
                 ],
 
