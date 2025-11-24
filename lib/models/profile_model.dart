@@ -1,6 +1,7 @@
 
 
 class ProfileModel {
+  final String? userID;
   String? profileImageBase64;
   final String name;
   final String email;
@@ -18,6 +19,7 @@ class ProfileModel {
   final String upi;
 
   ProfileModel({
+    this.userID,
     this.profileImageBase64,
     required this.name,
     required this.email,
@@ -37,6 +39,7 @@ class ProfileModel {
 
   factory ProfileModel.fromJson(Map<String, dynamic> json) {
     return ProfileModel(
+      userID:json['userID'],
       profileImageBase64: json["profileImageBase64"],
       name: json['name'] ?? '',
       email: json['email'] ?? '',
@@ -57,7 +60,8 @@ class ProfileModel {
 
   Map<String, dynamic> toJson() {
     return {
-      "profileImageBase64": profileImageBase64,
+      'userID':userID,
+      'profileImageBase64': profileImageBase64 ?? '',
       'name': name,
       'email': email,
       'phone': phone,
@@ -76,7 +80,8 @@ class ProfileModel {
   }
 
   ProfileModel copyWith({
-    String? profileImagePath,
+    String? userID,
+    String? profileImageBase64,
     String? name,
     String? email,
     String? phone,
@@ -93,6 +98,7 @@ class ProfileModel {
     String? upi,
   }) {
     return ProfileModel(
+      userID: userID ?? this.userID,
       profileImageBase64: profileImageBase64 ?? this.profileImageBase64,
       name: name ?? this.name,
       email: email ?? this.email,

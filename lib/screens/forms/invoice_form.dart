@@ -6,6 +6,7 @@ import 'package:invoice/models/customer_model.dart';
 import 'package:invoice/models/invoice_model.dart';
 import 'package:invoice/models/item_model.dart';
 import 'package:invoice/screens/menu/settings/Add_Custom_Field/add_custom_fields.dart';
+import 'package:invoice/utils/device_utils.dart';
 import 'package:invoice/widgets/buttons/custom_elevatedbutton.dart';
 import 'package:invoice/widgets/buttons/custom_iconbutton.dart';
 import 'package:invoice/widgets/buttons/custom_textformfield.dart';
@@ -63,6 +64,7 @@ class _InvoiceFormPageState extends State<InvoiceFormPage> {
   }
 
   Future<void> _initPage() async {
+    await _loadDeviceID();
     await _loadSettings();
     await _loadLabels();
     await _loadProfile();
@@ -175,6 +177,13 @@ class _InvoiceFormPageState extends State<InvoiceFormPage> {
 
   double get total => subtotal - _discount + _tax + _shipping;
 
+  String deviceID = "";
+
+  Future<void> _loadDeviceID() async {
+    deviceID = await DeviceUtils.getDeviceID();
+    setState(() {});
+  }
+
   Future<void> _loadInvoice() async {
     if (widget.existingInvoice == null) return;
 
@@ -254,8 +263,12 @@ class _InvoiceFormPageState extends State<InvoiceFormPage> {
 
   Future<void> _saveInvoice() async {
     if (!_formKey.currentState!.validate()) return;
+    final invoiceID = widget.existingInvoice != null
+        ? widget.existingInvoice!['invoiceID']
+        : "${deviceID}_${DateTime.now().millisecondsSinceEpoch}";
 
     final invoice = InvoiceModel(
+      invoiceID: invoiceID,
       customerId: selectedCustomer?.id ?? widget.existingInvoice?['customerId'],
       invoiceNo: invoiceNo.text,
       poNumber: poNumber.text.isEmpty ? null : poNumber.text,

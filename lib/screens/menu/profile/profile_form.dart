@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
@@ -7,9 +8,12 @@ import 'package:invoice/app_data/app_data.dart';
 import 'package:invoice/data_storage/InvoiceStorage.dart';
 import 'package:invoice/models/profile_model.dart';
 import 'package:invoice/screens/home/invoice_list.dart';
+import 'package:invoice/utils/device_utils.dart';
 import 'package:invoice/widgets/buttons/custom_elevatedbutton.dart';
 import 'package:invoice/widgets/buttons/custom_iconbutton.dart';
 import 'package:invoice/widgets/buttons/custom_textformfield.dart';
+
+
 
 class InvoiceProfileForm extends StatefulWidget {
   const InvoiceProfileForm({super.key});
@@ -46,7 +50,17 @@ class _InvoiceProfileFormState extends State<InvoiceProfileForm> {
     super.initState();
     _loadExistingProfile();
     _loadSettings();
+    _loadDeviceID();
   }
+
+
+  String deviceID = "";
+
+  Future<void> _loadDeviceID() async {
+    deviceID = await DeviceUtils.getDeviceID();
+    setState(() {});
+  }
+
 
   Future<void> _loadSettings() async {
     final settings = await InvoiceStorage.loadSettings();
@@ -63,7 +77,6 @@ class _InvoiceProfileFormState extends State<InvoiceProfileForm> {
       setState(() => isEditing = true);
       return;
     }
-
 
     setState(() {
       nameController.text = profile.name;
@@ -99,6 +112,7 @@ class _InvoiceProfileFormState extends State<InvoiceProfileForm> {
 
       // ✅ Save the correct permanent image path
       final profile = ProfileModel(
+        userID: deviceID,
         profileImageBase64: base64Image ?? '',
         name: nameController.text,
         email: emailController.text,
@@ -236,6 +250,8 @@ class _InvoiceProfileFormState extends State<InvoiceProfileForm> {
     final existingProfile =
         AppData().profile ??
         ProfileModel(
+          userID: '',
+          profileImageBase64: '',
           name: '',
           email: '',
           phone: '',
@@ -252,7 +268,7 @@ class _InvoiceProfileFormState extends State<InvoiceProfileForm> {
           upi: '',
         );
     final updatedProfile = existingProfile.copyWith(
-      profileImagePath: base64Image,
+      profileImageBase64: base64Image,
     );
     AppData().profile = updatedProfile;
     await InvoiceStorage.saveProfile(updatedProfile);

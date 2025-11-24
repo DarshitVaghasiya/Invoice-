@@ -3,8 +3,10 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:invoice/app_data/app_data.dart';
+import 'package:invoice/models/bank_account_model.dart';
 import 'package:invoice/models/settings_model.dart';
 import 'package:invoice/screens/menu/settings/Add_Custom_Field/add_custom_fields.dart';
+import 'package:invoice/screens/menu/settings/BankAccounts/bank_accounts.dart';
 import 'package:invoice/screens/menu/settings/Signature/signature.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
@@ -27,6 +29,8 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   SettingsModel? settings;
   bool isLoading = true;
+  List<BankAccountModel> bankAccounts = [];
+  bool isEditing = false;
 
   @override
   void initState() {
@@ -163,6 +167,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     },
                   ),
                   SettingTile(
+                    title: "Bank Account",
+                    icon: Icons.account_balance_sharp,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => BankAccountListMasonry(
+                            accounts: bankAccounts,
+                            editing: isEditing,
+                            onUpdate: () {
+                              setState(() {});
+                            },
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  SettingTile(
                     title: "Tax Information",
                     icon: Icons.percent_outlined,
                     isToggle: true,
@@ -184,7 +206,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   SettingTile(
                     title: "Bank Details",
-                    icon: Icons.account_balance_outlined,
+                    icon: Icons.details_outlined,
                     isToggle: true,
                     toggleValue: settings?.showBank ?? false,
                     onToggleChanged: (value) async {
