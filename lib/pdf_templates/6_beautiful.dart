@@ -66,8 +66,8 @@ class PdfGenerators6 {
     );
 
     BankAccountModel? bankAccount;
-    final allAccounts = AppData().bankAccounts;
-    if (allAccounts.isNotEmpty) {
+    final allAccounts = AppData().profile!.bankAccounts;
+    if (allAccounts!.isNotEmpty) {
       bankAccount = allAccounts.firstWhere(
             (acc) => acc.isPrimary == true,
         orElse: () => allAccounts.first,
