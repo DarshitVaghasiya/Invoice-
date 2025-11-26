@@ -3,6 +3,7 @@ import 'package:external_path/external_path.dart';
 import 'package:flutter/services.dart';
 import 'package:invoice/app_data/app_data.dart';
 import 'package:invoice/data_storage/InvoiceStorage.dart';
+import 'package:invoice/models/bank_account_model.dart';
 import 'package:invoice/models/invoice_model.dart';
 import 'package:invoice/models/item_model.dart';
 import 'package:invoice/utils/signature_helper.dart';
@@ -93,7 +94,7 @@ class PdfGenerator3 {
                   pw.SizedBox(height: 20),
 
                   // --- Items Table ---
-                  _itemTable(invoice,items, currencySymbol, accentBlue),
+                  _itemTable(invoice, items, currencySymbol, accentBlue),
 
                   pw.SizedBox(height: 16),
 
@@ -345,7 +346,17 @@ class PdfGenerator3 {
   ) {
     if (context.pageNumber != context.pagesCount) return pw.SizedBox();
 
-    final profile = AppData().profile;
+    BankAccountModel? bankAccount;
+    final allAccounts = AppData().bankAccounts;
+    if (allAccounts.isNotEmpty) {
+      bankAccount = allAccounts.firstWhere(
+        (acc) => acc.isPrimary == true,
+        orElse: () => allAccounts.first,
+      );
+    } else {
+      bankAccount = null;
+    }
+
     final showBank = settings.showBank == true;
     final showTerms = settings.showTerms == true;
     final showNotes = settings.showNotes == true;
@@ -371,7 +382,7 @@ class PdfGenerator3 {
             child: pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
-                if (showBank && profile != null) ...[
+                if (showBank && bankAccount != null) ...[
                   pw.Text(
                     "Bank Details",
                     style: pw.TextStyle(
@@ -380,31 +391,37 @@ class PdfGenerator3 {
                     ),
                   ),
                   pw.SizedBox(height: 4),
-                  if ((profile.bankName).toString().trim().isNotEmpty)
+
+                  if ((bankAccount.bankName).trim().isNotEmpty)
                     pw.Text(
-                      "Bank Name: ${profile.bankName}",
-                      style: const pw.TextStyle(fontSize: 12),
+                      "Bank Name: ${bankAccount.bankName}",
+                      style: pw.TextStyle(fontSize: 12),
                     ),
-                  if ((profile.accountHolder).toString().trim().isNotEmpty)
+
+                  if ((bankAccount.accountHolder).trim().isNotEmpty)
                     pw.Text(
-                      "Account Holder: ${profile.accountHolder}",
-                      style: const pw.TextStyle(fontSize: 12),
+                      "Account Holder: ${bankAccount.accountHolder}",
+                      style: pw.TextStyle(fontSize: 12),
                     ),
-                  if ((profile.accountNumber).toString().trim().isNotEmpty)
+
+                  if ((bankAccount.accountNumber).trim().isNotEmpty)
                     pw.Text(
-                      "Account Number: ${profile.accountNumber}",
-                      style: const pw.TextStyle(fontSize: 12),
+                      "Account Number: ${bankAccount.accountNumber}",
+                      style: pw.TextStyle(fontSize: 12),
                     ),
-                  if ((profile.ifsc).toString().trim().isNotEmpty)
+
+                  if ((bankAccount.ifsc).trim().isNotEmpty)
                     pw.Text(
-                      "IFSC Code: ${profile.ifsc}",
-                      style: const pw.TextStyle(fontSize: 12),
+                      "IFSC Code: ${bankAccount.ifsc}",
+                      style: pw.TextStyle(fontSize: 12),
                     ),
-                  if ((profile.upi).toString().trim().isNotEmpty)
+
+                  if ((bankAccount.upi).trim().isNotEmpty)
                     pw.Text(
-                      "UPI ID: ${profile.upi}",
-                      style: const pw.TextStyle(fontSize: 12),
+                      "UPI ID: ${bankAccount.upi}",
+                      style: pw.TextStyle(fontSize: 12),
                     ),
+
                   pw.SizedBox(height: 10),
                 ],
 

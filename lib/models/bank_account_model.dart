@@ -5,6 +5,7 @@ class BankAccountModel {
   final String accountNumber;
   final String ifsc;
   final String upi;
+  bool isPrimary;
 
   BankAccountModel({
     this.id,
@@ -13,6 +14,7 @@ class BankAccountModel {
     required this.accountNumber,
     required this.ifsc,
     required this.upi,
+    this.isPrimary = false,
   });
 
   factory BankAccountModel.fromJson(Map<String, dynamic> json) {
@@ -23,6 +25,7 @@ class BankAccountModel {
       accountNumber: json['accountNumber'] ?? '',
       ifsc: json['ifsc'] ?? '',
       upi: json['upi'] ?? '',
+      isPrimary: json["isPrimary"] ?? false,
     );
   }
 
@@ -34,6 +37,7 @@ class BankAccountModel {
       'accountNumber': accountNumber,
       'ifsc': ifsc,
       'upi': upi,
+      "isPrimary": isPrimary,
     };
   }
 
@@ -44,6 +48,7 @@ class BankAccountModel {
     String? accountNumber,
     String? ifsc,
     String? upi,
+    bool? isPrimary,
   }) {
     return BankAccountModel(
       id: id ?? this.id,
@@ -52,6 +57,21 @@ class BankAccountModel {
       accountNumber: accountNumber ?? this.accountNumber,
       ifsc: ifsc ?? this.ifsc,
       upi: upi ?? this.upi,
+      isPrimary: isPrimary ?? this.isPrimary,
     );
+  }
+
+  @override
+  String toString() {
+    return '''
+BankAccountModel(
+  id: $id,
+  bankName: $bankName,
+  accountHolder: $accountHolder,
+  accountNumber: $accountNumber,
+  ifsc: $ifsc,
+  upi: $upi,
+  isPrimary: $isPrimary
+)''';
   }
 }

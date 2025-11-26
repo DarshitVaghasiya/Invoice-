@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:invoice/app_data/app_data.dart';
 import 'package:invoice/data_storage/InvoiceStorage.dart';
+import 'package:invoice/models/bank_account_model.dart';
 import 'package:invoice/models/invoice_model.dart';
 import 'package:invoice/models/item_model.dart';
 import 'package:invoice/models/profile_model.dart';
@@ -57,6 +58,17 @@ class PdfGenerators5 {
         fontFallback: fallbackFonts,
       ),
     );
+
+    BankAccountModel? bankAccount;
+    final allAccounts = AppData().bankAccounts;
+    if (allAccounts.isNotEmpty) {
+      bankAccount = allAccounts.firstWhere(
+        (acc) => acc.isPrimary == true,
+        orElse: () => allAccounts.first,
+      );
+    } else {
+      bankAccount = null;
+    }
 
     final settings = AppData().settings;
     final String currency = invoice.currencySymbol ?? '₹';
@@ -229,22 +241,22 @@ class PdfGenerators5 {
                     ],
 
                     // PAYMENT INFO Section
-                    if (AppData().settings.showBank) ...[
+                    if (AppData().settings.showBank && bankAccount != null) ...[
                       _sectionTitle("PAYMENT INFORMATION"),
                       pw.Text(
-                        "Bank: ${profile?.bankName ?? '-'}",
+                        "Bank: ${bankAccount.bankName}",
                         style: const pw.TextStyle(fontSize: 10),
                       ),
                       pw.Text(
-                        "Name: ${profile?.accountHolder ?? '-'}",
+                        "Name: ${bankAccount.accountHolder}",
                         style: const pw.TextStyle(fontSize: 10),
                       ),
                       pw.Text(
-                        "Account No: ${profile?.accountNumber ?? '-'}",
+                        "Account No: ${bankAccount.accountNumber}",
                         style: const pw.TextStyle(fontSize: 10),
                       ),
                       pw.Text(
-                        "IFSC: ${profile?.ifsc ?? '-'}",
+                        "IFSC: ${bankAccount.ifsc}",
                         style: const pw.TextStyle(fontSize: 10),
                       ),
                       pw.SizedBox(height: 8),

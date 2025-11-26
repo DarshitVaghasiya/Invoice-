@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:invoice/app_data/app_data.dart';
 import 'package:invoice/data_storage/InvoiceStorage.dart';
+import 'package:invoice/models/bank_account_model.dart';
 import 'package:invoice/models/invoice_model.dart';
 import 'package:invoice/models/item_model.dart';
 import 'package:invoice/utils/signature_helper.dart';
@@ -59,6 +60,18 @@ class PdfGenerator1 {
 
     double _toDouble(dynamic val) =>
         double.tryParse(val?.toString() ?? '') ?? 0;
+
+     // List<BankAccountModel>
+    BankAccountModel? bankAccount;
+    final allAccounts = AppData().bankAccounts;
+    if (allAccounts.isNotEmpty) {
+      bankAccount = allAccounts.firstWhere(
+            (acc) => acc.isPrimary == true,
+        orElse: () => allAccounts.first,
+      );
+    } else {
+      bankAccount = null;
+    }
 
     final profile = AppData().profile;
     final settings = AppData().settings;
@@ -468,7 +481,7 @@ class PdfGenerator1 {
               child: pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
-                  if (showBank && profile != null) ...[
+                  if (showBank && bankAccount != null) ...[
                     pw.Text(
                       "Bank Details",
                       style: pw.TextStyle(
@@ -477,31 +490,37 @@ class PdfGenerator1 {
                       ),
                     ),
                     pw.SizedBox(height: 4),
-                    if ((profile.bankName).toString().trim().isNotEmpty)
+
+                    if ((bankAccount.bankName).trim().isNotEmpty)
                       pw.Text(
-                        "Bank Name: ${profile.bankName}",
-                        style: const pw.TextStyle(fontSize: 12),
+                        "Bank Name: ${bankAccount.bankName}",
+                        style: pw.TextStyle(fontSize: 12),
                       ),
-                    if ((profile.accountHolder).toString().trim().isNotEmpty)
+
+                    if ((bankAccount.accountHolder).trim().isNotEmpty)
                       pw.Text(
-                        "Account Holder: ${profile.accountHolder}",
-                        style: const pw.TextStyle(fontSize: 12),
+                        "Account Holder: ${bankAccount.accountHolder}",
+                        style: pw.TextStyle(fontSize: 12),
                       ),
-                    if ((profile.accountNumber).toString().trim().isNotEmpty)
+
+                    if ((bankAccount.accountNumber).trim().isNotEmpty)
                       pw.Text(
-                        "Account Number: ${profile.accountNumber}",
-                        style: const pw.TextStyle(fontSize: 12),
+                        "Account Number: ${bankAccount.accountNumber}",
+                        style: pw.TextStyle(fontSize: 12),
                       ),
-                    if ((profile.ifsc).toString().trim().isNotEmpty)
+
+                    if ((bankAccount.ifsc).trim().isNotEmpty)
                       pw.Text(
-                        "IFSC Code: ${profile.ifsc}",
-                        style: const pw.TextStyle(fontSize: 12),
+                        "IFSC Code: ${bankAccount.ifsc}",
+                        style: pw.TextStyle(fontSize: 12),
                       ),
-                    if ((profile.upi).toString().trim().isNotEmpty)
+
+                    if ((bankAccount.upi).trim().isNotEmpty)
                       pw.Text(
-                        "UPI ID: ${profile.upi}",
-                        style: const pw.TextStyle(fontSize: 12),
+                        "UPI ID: ${bankAccount.upi}",
+                        style: pw.TextStyle(fontSize: 12),
                       ),
+
                     pw.SizedBox(height: 10),
                   ],
 
@@ -584,11 +603,11 @@ class PdfGenerator1 {
 
   // Item table now requires invoice so header labels can be dynamic
   static pw.Widget _itemTable(
-      InvoiceModel invoice,
-      List<ItemModel> items,
-      String currency,
-      PdfColor headerBg,
-      ) {
+    InvoiceModel invoice,
+    List<ItemModel> items,
+    String currency,
+    PdfColor headerBg,
+  ) {
     double toDouble(dynamic val) => double.tryParse(val?.toString() ?? '') ?? 0;
 
     // 🔥 Collect all unique custom field names
@@ -601,11 +620,11 @@ class PdfGenerator1 {
     final defaultHeaders = _getHeaders(invoice); // [Desc, Qty, Rate, Amount]
     // 🔥 Build header dynamically
     final List<String> headers = [
-      defaultHeaders[0],        // Description
-      ...customFieldNames,     // Custom fields
-      defaultHeaders[1],        // Qty
-      defaultHeaders[2],        // Rate
-      defaultHeaders[3],        // Amount
+      defaultHeaders[0], // Description
+      ...customFieldNames, // Custom fields
+      defaultHeaders[1], // Qty
+      defaultHeaders[2], // Rate
+      defaultHeaders[3], // Amount
     ];
 
     // 🔥 Dynamic column widths
@@ -637,10 +656,9 @@ class PdfGenerator1 {
                 align: h == defaultHeaders[0]
                     ? pw.TextAlign.left
                     : pw.TextAlign.center,
-              )
+              ),
           ],
         ),
-
 
         // 🔵 ITEM ROWS
         ...items.map((item) {
@@ -673,8 +691,6 @@ class PdfGenerator1 {
       ],
     );
   }
-
-
 
   static pw.Widget _headerCell(
     String text, {

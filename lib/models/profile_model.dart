@@ -1,5 +1,7 @@
 
 
+import 'package:invoice/models/bank_account_model.dart';
+
 class ProfileModel {
   final String? userID;
   String? profileImageBase64;
@@ -12,11 +14,7 @@ class ProfileModel {
   final String country;
   final String pan;
   final String gst;
-  final String bankName;
-  final String accountHolder;
-  final String accountNumber;
-  final String ifsc;
-  final String upi;
+  List<BankAccountModel>? bankAccounts;
 
   ProfileModel({
     this.userID,
@@ -30,11 +28,7 @@ class ProfileModel {
     required this.country,
     required this.pan,
     required this.gst,
-    required this.bankName,
-    required this.accountHolder,
-    required this.accountNumber,
-    required this.ifsc,
-    required this.upi,
+    required this.bankAccounts,
   });
 
   factory ProfileModel.fromJson(Map<String, dynamic> json) {
@@ -50,11 +44,9 @@ class ProfileModel {
       country: json['country'] ?? '',
       pan: json['pan'] ?? '',
       gst: json['gst'] ?? '',
-      bankName: json['bankName'] ?? '',
-      accountHolder: json['accountHolder'] ?? '',
-      accountNumber: json['accountNumber'] ?? '',
-      ifsc: json['ifsc'] ?? '',
-      upi: json['upi'] ?? '',
+      bankAccounts: (json['bankAccounts'] as List<dynamic>?)
+          ?.map((e) => BankAccountModel.fromJson(e))
+          .toList() ?? [],
     );
   }
 
@@ -71,11 +63,7 @@ class ProfileModel {
       'country': country,
       'pan': pan,
       'gst': gst,
-      'bankName': bankName,
-      'accountHolder': accountHolder,
-      'accountNumber': accountNumber,
-      'ifsc': ifsc,
-      'upi': upi,
+      'bankAccounts': bankAccounts?.map((e) => e.toJson()).toList() ?? [],
     };
   }
 
@@ -91,11 +79,7 @@ class ProfileModel {
     String? country,
     String? pan,
     String? gst,
-    String? bankName,
-    String? accountHolder,
-    String? accountNumber,
-    String? ifsc,
-    String? upi,
+    List<BankAccountModel>? bankAccounts,
   }) {
     return ProfileModel(
       userID: userID ?? this.userID,
@@ -109,11 +93,25 @@ class ProfileModel {
       country: country ?? this.country,
       pan: pan ?? this.pan,
       gst: gst ?? this.gst,
-      bankName: bankName ?? this.bankName,
-      accountHolder: accountHolder ?? this.accountHolder,
-      accountNumber: accountNumber ?? this.accountNumber,
-      ifsc: ifsc ?? this.ifsc,
-      upi: upi ?? this.upi,
+      bankAccounts: bankAccounts ?? this.bankAccounts,
     );
+  }
+  @override
+  String toString() {
+    return '''
+ProfileModel(
+  userID: $userID,
+  name: $name,
+  email: $email,
+  phone: $phone,
+  street: $street,
+  city: $city,
+  state: $state,
+  country: $country,
+  pan: $pan,
+  gst: $gst,
+  bankAccounts: $bankAccounts
+)
+''';
   }
 }

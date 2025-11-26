@@ -11,6 +11,8 @@ Future<bool?> showCustomAlertDialog({
   String cancelText = "Cancel",
   Color confirmColor = Colors.red,
   Color cancelColor = const Color(0xFF009A75),
+
+  bool singleButton = false, // 🔥 NEW: show only OK button
 }) {
   return showDialog<bool>(
     context: context,
@@ -20,7 +22,6 @@ Future<bool?> showCustomAlertDialog({
       final dialogWidth = screenWidth > 600
           ? 400.0
           : (screenWidth * 0.85).toDouble();
-
 
       return Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -33,7 +34,7 @@ Future<bool?> showCustomAlertDialog({
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // 🔹 Icon + Title
+                // 🔹 Title with Icon
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
@@ -62,7 +63,7 @@ Future<bool?> showCustomAlertDialog({
                     fontSize: 15,
                     height: 1.4,
                     color: Colors.black,
-                    fontWeight: FontWeight.bold
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
 
@@ -72,18 +73,22 @@ Future<bool?> showCustomAlertDialog({
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
+                    // ❌ Hide Cancel Button if singleButton = true
+                    if (!singleButton)
+                      CustomIconButton(
+                        label: cancelText,
+                        backgroundColor: Colors.transparent,
+                        borderColor: cancelColor,
+                        textColor: cancelColor,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 10),
+                        onTap: () => Navigator.pop(context, false),
+                      ),
+
+                    if (!singleButton) const SizedBox(width: 10),
+
                     CustomIconButton(
-                      label: cancelText,
-                      backgroundColor: Colors.transparent,
-                      borderColor: cancelColor,
-                      textColor: cancelColor,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 10),
-                      onTap: () => Navigator.pop(context, false),
-                    ),
-                    const SizedBox(width: 10),
-                    CustomIconButton(
-                      label: confirmText,
+                      label: singleButton ? "OK" : confirmText, // 🔥 auto changes
                       borderColor: confirmColor,
                       textColor: confirmColor,
                       padding: const EdgeInsets.symmetric(

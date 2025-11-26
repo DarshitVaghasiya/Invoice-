@@ -223,6 +223,7 @@ class _InvoiceListPageState extends State<InvoiceListPage> {
       File? file;
       switch (template) {
         case "Simple":
+          print("BANK ACCOUNTS: ${AppData().bankAccounts}");
           file = await PdfGenerator1.generateSimpleTemplates(invoice);
           break;
         case "Classic":

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:invoice/app_data/app_data.dart';
 import 'package:invoice/data_storage/InvoiceStorage.dart';
+import 'package:invoice/models/bank_account_model.dart';
 import 'package:invoice/models/invoice_model.dart';
 import 'package:invoice/models/item_model.dart';
 import 'package:invoice/models/profile_model.dart';
@@ -64,9 +65,21 @@ class PdfGenerators6 {
       ),
     );
 
+    BankAccountModel? bankAccount;
+    final allAccounts = AppData().bankAccounts;
+    if (allAccounts.isNotEmpty) {
+      bankAccount = allAccounts.firstWhere(
+            (acc) => acc.isPrimary == true,
+        orElse: () => allAccounts.first,
+      );
+    } else {
+      bankAccount = null;
+    }
+
+
     final settings = AppData().settings;
     final String currency = invoice.currencySymbol ?? '\$';
-
+    final profile = AppData().profile;
     final pw.MemoryImage? signatureImage = SignatureHelper.fromBase64(
       settings.signatureBase64,
     );
@@ -80,9 +93,6 @@ class PdfGenerators6 {
           if (context.pageNumber != context.pagesCount) {
             return pw.SizedBox();
           }
-
-          final profile = AppData().profile;
-
           return pw.Container(
             margin: const pw.EdgeInsets.symmetric(horizontal: -25, vertical: -20),
             height: 100,
@@ -335,7 +345,7 @@ class PdfGenerators6 {
                   child: pw.Column(
                     crossAxisAlignment: pw.CrossAxisAlignment.start,
                     children: [
-                      if (AppData().settings.showBank)
+                      if (AppData().settings.showBank && bankAccount !=null)
                         pw.Container(
                           padding: const pw.EdgeInsets.all(8),
                           decoration: pw.BoxDecoration(
@@ -355,19 +365,19 @@ class PdfGenerators6 {
                               ),
                               pw.SizedBox(height: 6),
                               pw.Text(
-                                "Bank: ${profile?.bankName ?? '-'}",
+                                "Bank: ${bankAccount.bankName}",
                                 style: pw.TextStyle(fontSize: 9),
                               ),
                               pw.Text(
-                                "Name: ${profile?.accountHolder ?? '-'}",
+                                "Name: ${bankAccount.accountHolder}",
                                 style: pw.TextStyle(fontSize: 9),
                               ),
                               pw.Text(
-                                "Account No: ${profile?.accountNumber ?? '-'}",
+                                "Account No: ${bankAccount.accountNumber}",
                                 style: pw.TextStyle(fontSize: 9),
                               ),
                               pw.Text(
-                                "IFSC: ${profile?.ifsc ?? '-'}",
+                                "IFSC: ${bankAccount.ifsc}",
                                 style: pw.TextStyle(fontSize: 9),
                               ),
                             ],

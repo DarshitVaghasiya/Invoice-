@@ -6,14 +6,13 @@ import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:invoice/app_data/app_data.dart';
 import 'package:invoice/data_storage/InvoiceStorage.dart';
+import 'package:invoice/models/bank_account_model.dart';
 import 'package:invoice/models/profile_model.dart';
 import 'package:invoice/screens/home/invoice_list.dart';
 import 'package:invoice/utils/device_utils.dart';
 import 'package:invoice/widgets/buttons/custom_elevatedbutton.dart';
 import 'package:invoice/widgets/buttons/custom_iconbutton.dart';
 import 'package:invoice/widgets/buttons/custom_textformfield.dart';
-
-
 
 class InvoiceProfileForm extends StatefulWidget {
   const InvoiceProfileForm({super.key});
@@ -53,14 +52,12 @@ class _InvoiceProfileFormState extends State<InvoiceProfileForm> {
     _loadDeviceID();
   }
 
-
   String deviceID = "";
 
   Future<void> _loadDeviceID() async {
     deviceID = await DeviceUtils.getDeviceID();
     setState(() {});
   }
-
 
   Future<void> _loadSettings() async {
     final settings = await InvoiceStorage.loadSettings();
@@ -88,59 +85,91 @@ class _InvoiceProfileFormState extends State<InvoiceProfileForm> {
       countryController.text = profile.country;
       panNoController.text = profile.pan;
       gstNoController.text = profile.gst;
-      bankNameController.text = profile.bankName;
-      accountHolderController.text = profile.accountHolder;
-      accountNumberController.text = profile.accountNumber;
-      ifscController.text = profile.ifsc;
-      upiController.text = profile.upi;
+
+      final defaultBank = AppData().profile!.bankAccounts!.isNotEmpty
+          ? AppData().profile!.bankAccounts!.firstWhere(
+              (b) => b.isPrimary,
+              orElse: () => AppData().profile!.bankAccounts!.first,
+            )
+          : null;
+
+      if (defaultBank != null) {
+        bankNameController.text = defaultBank.bankName;
+        accountHolderController.text = defaultBank.accountHolder;
+        accountNumberController.text = defaultBank.accountNumber;
+        ifscController.text = defaultBank.ifsc;
+        upiController.text = defaultBank.upi;
+      }
+      print(profile);
       isEditing = false;
     });
   }
 
   Future<void> _saveProfile() async {
-    if (_formKey.currentState!.validate()) {
-      String? base64Image;
+    if (!_formKey.currentState!.validate()) return;
 
-      // ✅ Convert the selected image to Base64 (no resize)
-      if (_profileImage != null) {
-        final imageBytes = await _profileImage!.readAsBytes();
-        base64Image = base64Encode(imageBytes);
-      } else {
-        // Keep existing Base64 if user didn’t change image
-        base64Image = AppData().profile?.profileImageBase64 ?? '';
-      }
+    String base64Image;
+    if (_profileImage != null) {
+      final imageBytes = await _profileImage!.readAsBytes();
+      base64Image = base64Encode(imageBytes);
+    } else {
+      base64Image = AppData().profile?.profileImageBase64 ?? '';
+    }
+    String generateTimestampId() {
+      return DateTime.now().millisecondsSinceEpoch.toString();
+    }
 
-      // ✅ Save the correct permanent image path
-      final profile = ProfileModel(
-        userID: deviceID,
-        profileImageBase64: base64Image ?? '',
-        name: nameController.text,
-        email: emailController.text,
-        phone: phoneController.text,
-        street: streetController.text,
-        city: cityController.text,
-        state: stateController.text,
-        country: countryController.text,
-        pan: panNoController.text,
-        gst: gstNoController.text,
+    List<BankAccountModel> updatedBankAccounts = List.from(
+      AppData().bankAccounts,
+    );
+
+
+    if (bankNameController.text.isNotEmpty ||
+        accountHolderController.text.isNotEmpty ||
+        accountNumberController.text.isNotEmpty ||
+        ifscController.text.isNotEmpty ||
+        upiController.text.isNotEmpty) {
+      final primaryBank = BankAccountModel(
+        id: generateTimestampId(),
         bankName: bankNameController.text,
         accountHolder: accountHolderController.text,
         accountNumber: accountNumberController.text,
         ifsc: ifscController.text,
         upi: upiController.text,
+        isPrimary: true,
       );
 
-      AppData().profile = profile;
+      updatedBankAccounts.removeWhere((b) => b.isPrimary);
 
-      await InvoiceStorage.saveProfile(profile);
-
-      setState(() => isEditing = false);
-
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const InvoiceListPage()),
-      );
+      updatedBankAccounts.insert(0, primaryBank);
     }
+
+    final profile = ProfileModel(
+      userID: deviceID,
+      profileImageBase64: base64Image,
+      name: nameController.text,
+      email: emailController.text,
+      phone: phoneController.text,
+      street: streetController.text,
+      city: cityController.text,
+      state: stateController.text,
+      country: countryController.text,
+      pan: panNoController.text,
+      gst: gstNoController.text,
+      bankAccounts: updatedBankAccounts,
+    );
+
+    AppData().profile = profile;
+    AppData().bankAccounts = updatedBankAccounts;
+
+    await InvoiceStorage.saveProfile(profile);
+
+    setState(() => isEditing = false);
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const InvoiceListPage()),
+    );
   }
 
   Future<void> _pickImage() async {
@@ -261,11 +290,7 @@ class _InvoiceProfileFormState extends State<InvoiceProfileForm> {
           country: '',
           pan: '',
           gst: '',
-          bankName: '',
-          accountHolder: '',
-          accountNumber: '',
-          ifsc: '',
-          upi: '',
+          bankAccounts: [],
         );
     final updatedProfile = existingProfile.copyWith(
       profileImageBase64: base64Image,

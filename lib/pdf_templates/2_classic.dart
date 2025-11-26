@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:invoice/app_data/app_data.dart';
 import 'package:invoice/data_storage/InvoiceStorage.dart';
+import 'package:invoice/models/bank_account_model.dart';
 import 'package:invoice/models/invoice_model.dart';
 import 'package:invoice/models/item_model.dart';
 import 'package:invoice/utils/signature_helper.dart';
@@ -56,7 +57,18 @@ class PdfGenerator2 {
       ),
     );
 
-    final profile = AppData().profile;
+    BankAccountModel? bankAccount;
+    final allAccounts = AppData().bankAccounts;
+    if (allAccounts.isNotEmpty) {
+      bankAccount = allAccounts.firstWhere(
+        (acc) => acc.isPrimary == true,
+        orElse: () => allAccounts.first,
+      );
+    } else {
+      bankAccount = null;
+    }
+
+    // final profile = AppData().profile;
     final settings = AppData().settings;
     final String currencySymbol = invoice.currencySymbol ?? '\$';
     final primaryColor = PdfColor.fromInt(0xFF009A75);
@@ -64,9 +76,9 @@ class PdfGenerator2 {
 
     double toDouble(dynamic val) => double.tryParse(val?.toString() ?? '') ?? 0;
 
-    final pw.MemoryImage? signatureImage =
-    SignatureHelper.fromBase64(settings.signatureBase64);
-
+    final pw.MemoryImage? signatureImage = SignatureHelper.fromBase64(
+      settings.signatureBase64,
+    );
 
     pdf.addPage(
       pw.MultiPage(
@@ -190,9 +202,7 @@ class PdfGenerator2 {
           widgets.add(pw.SizedBox(height: 25));
           // 🔹 Items Table
           final items = invoice.items;
-          widgets.add(
-            _itemTable(invoice, items, currencySymbol, primaryColor),
-          );
+          widgets.add(_itemTable(invoice, items, currencySymbol, primaryColor));
           widgets.add(pw.SizedBox(height: 20));
           // 🔹 Totals Section
           widgets.add(
@@ -209,8 +219,8 @@ class PdfGenerator2 {
             pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
-                if (settings.showBank && profile != null)
-                  _buildBankSection(profile),
+                if (settings.showBank && bankAccount != null)
+                  _buildBankSection(bankAccount),
                 if (settings.showNotes &&
                     (invoice.notes?.toString().trim().isNotEmpty ?? false))
                   _buildSection("Notes", invoice.notes ?? ''),
@@ -343,7 +353,7 @@ class PdfGenerator2 {
     ),
   );
 
-  static pw.Widget _buildBankSection(dynamic profile) => pw.Column(
+  static pw.Widget _buildBankSection(dynamic backAccount) => pw.Column(
     crossAxisAlignment: pw.CrossAxisAlignment.start,
     children: [
       pw.Text(
@@ -351,23 +361,31 @@ class PdfGenerator2 {
         style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 14),
       ),
       pw.SizedBox(height: 4),
-      if (profile.bankName?.isNotEmpty == true)
+      if (backAccount.bankName?.isNotEmpty == true)
         pw.Text(
-          "Bank: ${profile.bankName}",
+          "Bank: ${backAccount.bankName}",
           style: const pw.TextStyle(fontSize: 12),
         ),
-      if (profile.accountNumber?.isNotEmpty == true)
+      if (backAccount.accountHolder?.isNotEmpty == true)
         pw.Text(
-          "A/c No: ${profile.accountNumber}",
+          "Account Holder: ${backAccount.accountHolder}",
           style: const pw.TextStyle(fontSize: 12),
         ),
-      if (profile.ifsc?.isNotEmpty == true)
+      if (backAccount.accountNumber?.isNotEmpty == true)
         pw.Text(
-          "IFSC: ${profile.ifsc}",
+          "A/c No: ${backAccount.accountNumber}",
           style: const pw.TextStyle(fontSize: 12),
         ),
-      if (profile.upi?.isNotEmpty == true)
-        pw.Text("UPI: ${profile.upi}", style: const pw.TextStyle(fontSize: 12)),
+      if (backAccount.ifsc?.isNotEmpty == true)
+        pw.Text(
+          "IFSC: ${backAccount.ifsc}",
+          style: const pw.TextStyle(fontSize: 12),
+        ),
+      if (backAccount.upi?.isNotEmpty == true)
+        pw.Text(
+          "UPI: ${backAccount.upi}",
+          style: const pw.TextStyle(fontSize: 12),
+        ),
       pw.SizedBox(height: 10),
     ],
   );
@@ -389,11 +407,11 @@ class PdfGenerator2 {
   );
 
   static pw.Widget _itemTable(
-      InvoiceModel invoice,
-      List<ItemModel> items,
-      String currency,
-      PdfColor headerBg,
-      ) {
+    InvoiceModel invoice,
+    List<ItemModel> items,
+    String currency,
+    PdfColor headerBg,
+  ) {
     double toDouble(dynamic val) => double.tryParse(val?.toString() ?? '') ?? 0;
 
     // 🔥 COLLECT CUSTOM FIELDS
@@ -407,11 +425,11 @@ class PdfGenerator2 {
 
     // 🔥 REARRANGE ORDER → Description + CUSTOM + Qty + Rate + Amount
     final List<String> headers = [
-      defaultHeaders[0],        // Description
-      ...customFieldNames,      // Custom fields
-      defaultHeaders[1],        // Qty
-      defaultHeaders[2],        // Rate
-      defaultHeaders[3],        // Amount
+      defaultHeaders[0], // Description
+      ...customFieldNames, // Custom fields
+      defaultHeaders[1], // Qty
+      defaultHeaders[2], // Rate
+      defaultHeaders[3], // Amount
     ];
 
     // 🔥 DYNAMIC COLUMN WIDTHS
@@ -438,7 +456,7 @@ class PdfGenerator2 {
                 align: h == defaultHeaders[0]
                     ? pw.TextAlign.left
                     : pw.TextAlign.center,
-              )
+              ),
           ],
         ),
 
@@ -480,8 +498,6 @@ class PdfGenerator2 {
       ],
     );
   }
-
-
 
   static pw.Widget _headerCell(
     String text, {

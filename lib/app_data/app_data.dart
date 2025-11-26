@@ -1,5 +1,6 @@
 import 'package:invoice/data_storage/InvoiceStorage.dart';
 import 'package:invoice/models/add_items_model.dart';
+import 'package:invoice/models/bank_account_model.dart';
 import 'package:invoice/models/customer_model.dart';
 import 'package:invoice/models/invoice_model.dart';
 import 'package:invoice/models/profile_model.dart';
@@ -7,7 +8,9 @@ import 'package:invoice/models/settings_model.dart';
 
 class AppData {
   static final AppData _instance = AppData._internal();
+
   factory AppData() => _instance;
+
   AppData._internal();
 
   List<CustomerModel> customers = [];
@@ -16,6 +19,7 @@ class AppData {
   int lastInvoiceNumber = 0;
   ProfileModel? profile;
   SettingsModel settings = SettingsModel();
+  List<BankAccountModel> bankAccounts = [];
 
   // ✅ Default labels
   static Map<String, String> itemTitles = {
@@ -31,6 +35,23 @@ class AppData {
     invoices = all["invoices"];
     items = all["items"];
     profile = all["profile"];
+
+    final storedList = all["bankAccounts"];
+
+    if (storedList is List) {
+      bankAccounts = storedList.map((e) {
+        if (e is BankAccountModel) {
+          return e; // Already parsed model
+        } else if (e is Map<String, dynamic>) {
+          return BankAccountModel.fromJson(e); // JSON → Model
+        } else {
+          throw Exception("Invalid bank account data type: ${e.runtimeType}");
+        }
+      }).toList();
+    } else {
+      bankAccounts = [];
+    }
+
 
     final settingsData = all["settings"];
     if (settingsData is SettingsModel) {
@@ -50,11 +71,17 @@ class AppData {
       return;
     }
 
-    final nums = invoices
-        .map((inv) =>
-    int.tryParse(inv.invoiceNo.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0)
-        .toList()
-      ..sort();
+    final nums =
+        invoices
+            .map(
+              (inv) =>
+                  int.tryParse(
+                    inv.invoiceNo.replaceAll(RegExp(r'[^0-9]'), ''),
+                  ) ??
+                  0,
+            )
+            .toList()
+          ..sort();
 
     int next = 1;
     for (final n in nums) {
@@ -71,19 +98,22 @@ class AppData {
     if (invoices.isEmpty) return "#01";
 
     final usedNumbers = invoices
-        .map((inv) =>
-    int.tryParse(inv.invoiceNo.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0)
+        .map(
+          (inv) =>
+              int.tryParse(inv.invoiceNo.replaceAll(RegExp(r'[^0-9]'), '')) ??
+              0,
+        )
         .toList();
 
-    int maxNumber =
-    usedNumbers.isEmpty ? 0 : usedNumbers.reduce((a, b) => a > b ? a : b);
+    int maxNumber = usedNumbers.isEmpty
+        ? 0
+        : usedNumbers.reduce((a, b) => a > b ? a : b);
 
     return "#${(maxNumber + 1).toString().padLeft(2, '0')}";
   }
 
   void incrementInvoiceNo(String invoiceNo) {
-    final num =
-        int.tryParse(invoiceNo.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
+    final num = int.tryParse(invoiceNo.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
     if (num > lastInvoiceNumber) lastInvoiceNumber = num;
   }
 
