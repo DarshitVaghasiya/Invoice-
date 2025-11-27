@@ -6,7 +6,6 @@ import 'package:invoice/models/invoice_model.dart';
 import 'package:invoice/models/profile_model.dart';
 import 'package:invoice/models/settings_model.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:file_picker/file_picker.dart';
 
 class InvoiceStorage {
   // -----------------------------------------------------------------
@@ -49,7 +48,6 @@ class InvoiceStorage {
       final decoded = jsonDecode(content);
       return Map<String, dynamic>.from(decoded);
     } catch (e) {
-      print("⚠️ JSON decode failed: $e — returning empty data.");
       return {
         "profile": {},
         "customer": [],
@@ -310,9 +308,7 @@ class InvoiceStorage {
         await downloadsDir.create(recursive: true);
       }
 
-      final file = File(
-        "${downloadsDir.path}/Invoices.json",
-      );
+      final file = File("${downloadsDir.path}/Invoices.json");
       await file.writeAsString(jsonString, flush: true);
 
       print("✅ File Successfully Exported In Your Download Folder");
@@ -323,35 +319,156 @@ class InvoiceStorage {
     }
   }
 
+  static Future<bool> hasDuplicates(File file) async {
+    try {
+      final jsonString = await file.readAsString();
+      final decoded = json.decode(jsonString);
+      if (decoded is! Map<String, dynamic>) return false;
+
+      Map<String, dynamic> newData = Map<String, dynamic>.from(decoded);
+      Map<String, dynamic> oldData = await _loadData();
+
+      for (var key in newData.keys) {
+        if (oldData[key] is List && newData[key] is List) {
+          for (var newItem in newData[key]) {
+            final newId = newItem["id"] ?? newItem["invoiceID"];
+            final exists = (oldData[key] as List).any(
+              (item) => item["id"] == newId || item["invoiceID"] == newId,
+            );
+            if (exists) return true; // duplicate found
+          }
+        }
+      }
+      return false; // no duplicates
+    } catch (_) {
+      return false;
+    }
+  }
+
   // -----------------------------------------------------------------
   // 📤 IMPORT FULL JSON FILE FROM DOWNLOADS FOLDER
   // -----------------------------------------------------------------
   static Future<bool> importDataFromJsonFile({
+    required File file,
+    required bool userChoiceReplace,
     Future<void> Function()? onDataReload,
   }) async {
     try {
-      // Pick the JSON file
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['json'],
-      );
-
-      if (result == null || result.files.single.path == null) return false;
-
-      final file = File(result.files.single.path!);
       final jsonString = await file.readAsString();
       final decoded = json.decode(jsonString);
 
       if (decoded is! Map<String, dynamic>) return false;
+      Map<String, dynamic> newData = Map<String, dynamic>.from(decoded);
 
-      // Replace existing file data
-      await _saveData(Map<String, dynamic>.from(decoded));
+      Map<String, dynamic> oldData = await _loadData();
 
-      // 🔄 Reload models into memory & UI
-      if (onDataReload != null) {
-        await onDataReload();
+      if (!userChoiceReplace) {
+        // ---------------- SKIP MODE ----------------
+        newData.forEach((key, value) {
+          // direct list keys (customer, item, invoice)
+          if (oldData[key] is List && value is List) {
+            List oldList = oldData[key];
+            List newList = value;
+
+            for (var newItem in newList) {
+              final newId = newItem["id"] ?? newItem["invoiceID"];
+              final exists = oldList.any(
+                (item) => item["id"] == newId || item["invoiceID"] == newId,
+              );
+
+              if (!exists) oldList.add(newItem);
+            }
+          }
+          // profile
+          else if (key == "profile" && value is Map) {
+            if (oldData[key] is! Map) {
+              oldData[key] = value;
+            } else {
+              Map<String, dynamic> newProfile = Map<String, dynamic>.from(
+                value,
+              );
+              newProfile.remove("bankAccounts");
+              oldData[key].addAll(newProfile);
+
+              if (value["bankAccounts"] is List) {
+                List newBanks = value["bankAccounts"];
+                oldData[key]["bankAccounts"] ??= [];
+                List oldBanks = oldData[key]["bankAccounts"];
+
+                for (var bank in newBanks) {
+                  final newBankId = bank["id"];
+                  final exists = oldBanks.any((b) => b["id"] == newBankId);
+                  if (!exists) oldBanks.add(bank);
+                }
+              }
+            }
+          }
+          // others
+          else {
+            if (!oldData.containsKey(key)) oldData[key] = value;
+          }
+        });
+      } else {
+        // ---------------- SMART REPLACE MODE ----------------
+        newData.forEach((key, value) {
+          // direct list keys (customer, item, invoice)
+          if (oldData[key] is List && value is List) {
+            List oldList = oldData[key];
+            List newList = value;
+
+            for (var newItem in newList) {
+              final newId = newItem["id"] ?? newItem["invoiceID"];
+              final index = oldList.indexWhere(
+                (item) => item["id"] == newId || item["invoiceID"] == newId,
+              );
+
+              if (index != -1) {
+                oldList[index] = newItem; // replace
+              } else {
+                oldList.add(newItem); // add
+              }
+            }
+          }
+          // profile
+          else if (key == "profile" && value is Map) {
+            if (oldData[key] is! Map) {
+              oldData[key] = value;
+            } else {
+              Map<String, dynamic> newProfile = Map<String, dynamic>.from(
+                value,
+              );
+              newProfile.remove("bankAccounts");
+              oldData[key].addAll(newProfile);
+
+              if (value["bankAccounts"] is List) {
+                List newBanks = value["bankAccounts"];
+                oldData[key]["bankAccounts"] ??= [];
+                List oldBanks = oldData[key]["bankAccounts"];
+
+                for (var bank in newBanks) {
+                  final newBankId = bank["id"];
+                  final index = oldBanks.indexWhere(
+                    (b) => b["id"] == newBankId,
+                  );
+
+                  if (index != -1) {
+                    oldBanks[index] = bank; // replace
+                  } else {
+                    oldBanks.add(bank); // add
+                  }
+                }
+              }
+            }
+          }
+          // other map keys → full overwrite
+          else {
+            oldData[key] = value;
+          }
+        });
       }
 
+      await _saveData(oldData);
+      if (onDataReload != null) await onDataReload();
       return true;
     } catch (e) {
       print("❌ Import failed: $e");

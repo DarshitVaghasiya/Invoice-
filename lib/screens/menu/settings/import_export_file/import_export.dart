@@ -1,3 +1,4 @@
+/*
 import 'package:flutter/material.dart';
 import 'package:invoice/app_data/app_data.dart';
 import 'package:invoice/data_storage/InvoiceStorage.dart';
@@ -13,6 +14,106 @@ class ImportExportFile extends StatefulWidget {
 
 class _ImportExportFileState extends State<ImportExportFile> {
   bool isProcessing = false;
+
+  Future<void> _importData() async {
+    // First pick the JSON file
+    final selectedFile = await InvoiceStorage.pickJsonFile();
+    if (selectedFile == null) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text("❌ No file selected")));
+      return;
+    }
+
+    // Step 1 → Ask Append or Overwrite
+    final type = await showCustomAlertDialog(
+      context: context,
+      title: "Import Data",
+      message: "How do you want to import data?",
+      confirmText: "Overwrite",
+      cancelText: "Append",
+      confirmColor: Colors.red,
+      cancelColor: Colors.blue,
+    );
+
+    if (type == null) return;
+
+    bool overwrite = type == true;
+
+    // Step 2 → Confirmation Dialog
+    final confirm = await showCustomAlertDialog(
+      context: context,
+      title: overwrite ? "Overwrite Data" : "Append Data",
+      message: overwrite
+          ? "⚠ This will delete all current data and replace with file.\nAre you sure?"
+          : "New data will be merged with existing data.\nContinue?",
+      confirmText: "Confirm",
+      cancelText: "Cancel",
+      confirmColor: Colors.green,
+      cancelColor: Colors.red,
+    );
+
+    if (confirm != true) return;
+
+    // Process Import
+    setState(() => isProcessing = true);
+
+    final success = await InvoiceStorage.importDataFromJsonFile(
+      filePath: selectedFile, // <-- send file path
+      overwrite: overwrite,
+      onDataReload: () async {
+        final all = await InvoiceStorage.loadAll();
+        AppData().customers = all["customers"];
+        AppData().invoices = all["invoices"];
+        AppData().items = all["items"];
+        AppData().bankAccounts = all["bankAccounts"];
+        AppData().profile = all["profile"];
+        AppData().settings = all["settings"];
+        setState(() {});
+      },
+    );
+
+    setState(() => isProcessing = false);
+
+    if (success) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const InvoiceListPage()),
+            (route) => false,
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("❌ Import failed"), backgroundColor: Colors.red),
+      );
+    }
+  }
+
+
+  Future<void> _exportData() async {
+    final confirmed = await showCustomAlertDialog(
+      context: context,
+      title: "Export File",
+      message: "Are you sure you want to export all data?",
+      confirmText: "Yes",
+      cancelText: "No",
+      confirmColor: Colors.green,
+      cancelColor: Colors.red,
+    );
+
+    if (confirmed == true) {
+      AppData().saveAllData();
+
+      final path = await InvoiceStorage.exportDataToDownloads();
+      if (path != null) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("✅ Exported to $path")));
+      } else {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("❌ Export failed")));
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -36,37 +137,11 @@ class _ImportExportFileState extends State<ImportExportFile> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                   /* _buildActionButton(
+                    _buildActionButton(
                       label: "Export File",
                       icon: Icons.upload_file_outlined,
                       color: Colors.blueAccent,
-                      onPressed: () async {
-                        final confirmed = await showCustomAlertDialog(
-                          context: context,
-                          title: "Export File",
-                          message: "Are you sure you want to export all data?",
-                          confirmText: "Yes",
-                          cancelText: "No",
-                          confirmColor: Colors.green,
-                          cancelColor: Colors.red,
-                        );
-
-                        if (confirmed == true) {
-                          AppData().saveAllData();
-
-                          final path =
-                              await InvoiceStorage.exportDataToDownloads();
-                          if (path != null) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text("✅ Exported to $path")),
-                            );
-                          } else {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text("❌ Export failed")),
-                            );
-                          }
-                        }
-                      },
+                      onPressed: _exportData,
                     ),
 
                     const SizedBox(height: 20),
@@ -74,48 +149,8 @@ class _ImportExportFileState extends State<ImportExportFile> {
                       label: "Import File",
                       icon: Icons.download_outlined,
                       color: Colors.green,
-                      onPressed: () async {
-                        setState(() => isProcessing = true);
-
-                        final success = await InvoiceStorage.importDataFromJsonFile(
-                          onDataReload: () async {
-                            // Reload data into AppData (your global data holder)
-                            final allData = await InvoiceStorage.loadAll();
-                            AppData().customers = allData["customers"];
-                            AppData().invoices = allData["invoices"];
-                            AppData().items = allData["items"];
-                            AppData().profile = allData["profile"];
-                            AppData().settings = allData["settings"];
-
-                            setState(() {}); // 🔄 Refresh UI
-                          },
-                        );
-
-                        setState(() => isProcessing = false);
-
-                        if (success) {
-                          // ✅ Import succeeded → go to list page
-                          Navigator.pushAndRemoveUntil(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const InvoiceListPage(),
-                            ),
-                            (route) => false,
-                          );
-                        } else {
-                          // ❌ Import failed → show error, stay on same screen
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                "❌ Import failed",
-                                style: TextStyle(color: Colors.white),
-                              ),
-                              backgroundColor: Colors.red,
-                            ),
-                          );
-                        }
-                      },
-                    ),*/
+                      onPressed: _importData
+                    ),
                   ],
                 ),
               ),
@@ -154,3 +189,4 @@ class _ImportExportFileState extends State<ImportExportFile> {
     );
   }
 }
+*/

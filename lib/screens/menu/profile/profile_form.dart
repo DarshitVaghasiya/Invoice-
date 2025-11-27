@@ -13,6 +13,7 @@ import 'package:invoice/utils/device_utils.dart';
 import 'package:invoice/widgets/buttons/custom_elevatedbutton.dart';
 import 'package:invoice/widgets/buttons/custom_iconbutton.dart';
 import 'package:invoice/widgets/buttons/custom_textformfield.dart';
+import 'package:uuid/uuid.dart';
 
 class InvoiceProfileForm extends StatefulWidget {
   const InvoiceProfileForm({super.key});
@@ -53,6 +54,7 @@ class _InvoiceProfileFormState extends State<InvoiceProfileForm> {
   }
 
   String deviceID = "";
+  final uuid = Uuid();
 
   Future<void> _loadDeviceID() async {
     deviceID = await DeviceUtils.getDeviceID();
@@ -100,7 +102,6 @@ class _InvoiceProfileFormState extends State<InvoiceProfileForm> {
         ifscController.text = defaultBank.ifsc;
         upiController.text = defaultBank.upi;
       }
-      print(profile);
       isEditing = false;
     });
   }
@@ -115,14 +116,10 @@ class _InvoiceProfileFormState extends State<InvoiceProfileForm> {
     } else {
       base64Image = AppData().profile?.profileImageBase64 ?? '';
     }
-    String generateTimestampId() {
-      return DateTime.now().millisecondsSinceEpoch.toString();
-    }
 
     List<BankAccountModel> updatedBankAccounts = List.from(
       AppData().bankAccounts,
     );
-
 
     if (bankNameController.text.isNotEmpty ||
         accountHolderController.text.isNotEmpty ||
@@ -130,7 +127,7 @@ class _InvoiceProfileFormState extends State<InvoiceProfileForm> {
         ifscController.text.isNotEmpty ||
         upiController.text.isNotEmpty) {
       final primaryBank = BankAccountModel(
-        id: generateTimestampId(),
+        id: uuid.v4(),
         bankName: bankNameController.text,
         accountHolder: accountHolderController.text,
         accountNumber: accountNumberController.text,
@@ -145,7 +142,7 @@ class _InvoiceProfileFormState extends State<InvoiceProfileForm> {
     }
 
     final profile = ProfileModel(
-      userID: deviceID,
+      userID: uuid.v4(),
       profileImageBase64: base64Image,
       name: nameController.text,
       email: emailController.text,

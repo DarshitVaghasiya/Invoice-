@@ -3,16 +3,21 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:invoice/app_data/app_data.dart';
+import 'package:invoice/data_storage/InvoiceStorage.dart';
 import 'package:invoice/models/bank_account_model.dart';
 import 'package:invoice/models/settings_model.dart';
+import 'package:invoice/screens/home/invoice_list.dart';
 import 'package:invoice/screens/menu/settings/Add_Custom_Field/add_custom_fields.dart';
 import 'package:invoice/screens/menu/settings/BankAccounts/bank_accounts.dart';
 import 'package:invoice/screens/menu/settings/Signature/signature.dart';
+import 'package:invoice/screens/menu/settings/import_export_file/import_export.dart';
+import 'package:invoice/widgets/buttons/custom_dialog.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
 import 'edit_invoice_title/edit_invoice_title.dart';
 import 'setting_tiles/settings_tiles.dart' show SettingTile;
 import 'Templates/templates.dart';
+import 'package:file_picker/file_picker.dart';
 
 Future<void> saveSettings(SettingsModel settings) async {
   AppData().settings = settings;
@@ -72,6 +77,90 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await OpenFilex.open(file.path);
     } catch (e) {
       print("Error opening FAQ: $e");
+    }
+  }
+
+  Future<void> _importData() async {
+    final selectedFile = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['json'],
+    );
+
+    if (selectedFile == null || selectedFile.files.single.path == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("❌ No file selected")));
+      return;
+    }
+
+    final file = File(selectedFile.files.single.path!);
+
+    // 1️⃣ Check duplicates first
+    bool duplicatesExist = await InvoiceStorage.hasDuplicates(file);
+
+    bool userReplaceChoice = false;
+
+    // 2️⃣ Only show Replace / Skip if duplicate exists
+    if (duplicatesExist) {
+      final result = await showCustomAlertDialog(
+        context: context,
+        title: "Import Data",
+        message:
+            "Some IDs already exist in current data.\nHow do you want to handle duplicates?",
+        confirmText: "Replace",
+        cancelText: "Skip",
+      );
+
+      if (result == null) return; // if cancelled
+      userReplaceChoice = result; // true = replace, false = skip
+    }
+
+    // 3️⃣ Import
+    final success = await InvoiceStorage.importDataFromJsonFile(
+      file: file,
+      userChoiceReplace: userReplaceChoice,
+      onDataReload: () async {
+        await AppData().loadAllData();
+        if (context.mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const InvoiceListPage()),
+          );
+        }
+      },
+    );
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(success ? "✅ Import Completed" : "❌ Import Failed"),
+      ),
+    );
+  }
+
+  Future<void> _exportData() async {
+    final confirmed = await showCustomAlertDialog(
+      context: context,
+      title: "Export File",
+      message: "Are you sure you want to export all data?",
+      confirmText: "Yes",
+      cancelText: "No",
+      confirmColor: Colors.green,
+      cancelColor: Colors.red,
+    );
+
+    if (confirmed == true) {
+      AppData().saveAllData();
+
+      final path = await InvoiceStorage.exportDataToDownloads();
+      if (path != null) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("✅ Exported to $path")));
+      } else {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("❌ Export failed")));
+      }
     }
   }
 
@@ -137,6 +226,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 crossAxisSpacing: spacing,
                 childAspectRatio: childAspectRatio,
                 children: [
+                  SettingTile(
+                    title: "Import File",
+                    icon: Icons.download_outlined,
+                    onTap: _importData,
+                  ),
+                  SettingTile(
+                    title: "Export File",
+                    icon: Icons.upload_outlined,
+                    onTap: _exportData,
+                  ),
                   SettingTile(
                     title: "Choose Invoice Template",
                     subtitle: settings?.selectedTemplate,
@@ -282,7 +381,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       }
                     },
                   ),
-
                   SettingTile(
                     title: "FAQ",
                     icon: Icons.info_outline,

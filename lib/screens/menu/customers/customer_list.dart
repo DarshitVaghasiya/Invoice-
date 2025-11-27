@@ -38,7 +38,7 @@ class _CustomerListState extends State<CustomerList>
       context,
       MaterialPageRoute(
         builder: (context) =>
-            CustomerForm(existingCustomer: customer.toJson(), index: index),
+            CustomerForm(existingCustomer: customer, index: index),
       ),
     );
 

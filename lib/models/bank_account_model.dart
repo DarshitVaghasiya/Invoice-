@@ -19,7 +19,7 @@ class BankAccountModel {
 
   factory BankAccountModel.fromJson(Map<String, dynamic> json) {
     return BankAccountModel(
-      id: json['id'],
+      id: json['id'].toString(),
       bankName: json['bankName'] ?? '',
       accountHolder: json['accountHolder'] ?? '',
       accountNumber: json['accountNumber'] ?? '',

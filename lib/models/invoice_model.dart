@@ -2,7 +2,7 @@ import 'item_model.dart';
 
 class InvoiceModel {
   final String? invoiceID;
-  final int? customerId;
+  final String? customerId;
   String invoiceNo;
   String? poNumber;
   String from;
@@ -68,7 +68,7 @@ class InvoiceModel {
   factory InvoiceModel.fromJson(Map<String, dynamic> json) {
     return InvoiceModel(
       invoiceID: json['invoiceID'] ?? "INV_${DateTime.now().millisecondsSinceEpoch}",
-      customerId: json['customerId'],
+      customerId: json['customerId'].toString(),
       invoiceNo: json['invoiceNo'],
       poNumber: json['poNumber'],
       from: json['from'],
@@ -134,7 +134,7 @@ class InvoiceModel {
   /// ✅ Add this method
   InvoiceModel copyWith({
     String? invoiceID,
-    int? customerId,
+    String? customerId,
     String? invoiceNo,
     String? poNumber,
     String? from,

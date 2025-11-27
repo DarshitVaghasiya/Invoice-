@@ -1,5 +1,5 @@
 class CustomerModel {
-  final int id;
+  final String id;
   final String name;
   final String email;
   final String phone;
@@ -27,7 +27,7 @@ class CustomerModel {
 
   factory CustomerModel.fromJson(Map<String, dynamic> json) {
     return CustomerModel(
-      id: json['id'] ?? 0, // default 0 if missing
+      id: json['id'].toString(),
       name: json['name'] ?? '',
       email: json['email'] ?? '',
       phone: json['phone'] ?? '',
@@ -56,7 +56,7 @@ class CustomerModel {
   };
 
   CustomerModel copyWith({
-    int? id,
+    String? id,
     String? name,
     String? email,
     String? phone,

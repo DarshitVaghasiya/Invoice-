@@ -4,6 +4,7 @@ import 'package:invoice/models/bank_account_model.dart';
 import 'package:invoice/widgets/buttons/custom_dialog.dart';
 import 'package:invoice/widgets/buttons/custom_elevatedbutton.dart';
 import 'package:invoice/widgets/buttons/custom_textformfield.dart';
+import 'package:uuid/uuid.dart';
 
 class AddBankAccount extends StatefulWidget {
   final BankAccountModel? existing;
@@ -25,6 +26,7 @@ class _AddBankAccountState extends State<AddBankAccount> {
 
   bool isPrimary = false;
   late List<BankAccountModel> accounts;
+  final uuid = Uuid();
 
   @override
   void initState() {
@@ -41,15 +43,12 @@ class _AddBankAccountState extends State<AddBankAccount> {
     }
   }
 
-  String generateTimestampId() {
-    return DateTime.now().millisecondsSinceEpoch.toString();
-  }
 
   Future<void> _saveBankAccount() async {
     if (!_formKey.currentState!.validate()) return;
 
     final bankAccount = BankAccountModel(
-      id: widget.existing?.id ?? generateTimestampId(),
+      id: widget.existing?.id ?? uuid.v4(),
       bankName: bankNameController.text.trim(),
       accountHolder: accountHolderController.text.trim(),
       accountNumber: accountNumberController.text.trim(),
@@ -59,20 +58,16 @@ class _AddBankAccountState extends State<AddBankAccount> {
     );
 
     final appData = AppData();
-    final profile = appData.profile!.bankAccounts; // ⬅ profile is a single ProfileModel
+    final profile =
+        appData.profile!.bankAccounts; // ⬅ profile is a single ProfileModel
 
     if (profile != null) {
       // Editing existing bank account
       if (widget.existing != null) {
-        final index = profile.indexWhere(
-          (b) => b.id == widget.existing!.id,
-        );
+        final index = profile.indexWhere((b) => b.id == widget.existing!.id);
         if (index != -1) {
           profile[index] = bankAccount;
         }
-      } else {
-        // Adding new bank
-        profile.add(bankAccount);
       }
 
       // Ensure only ONE primary

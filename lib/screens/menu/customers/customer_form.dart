@@ -5,9 +5,10 @@ import 'package:invoice/models/customer_model.dart';
 import 'package:invoice/widgets/buttons/custom_elevatedbutton.dart';
 import 'package:invoice/widgets/buttons/custom_iconbutton.dart';
 import 'package:invoice/widgets/buttons/custom_textformfield.dart';
+import 'package:uuid/uuid.dart';
 
 class CustomerForm extends StatefulWidget {
-  final Map<String, dynamic>? existingCustomer;
+  final CustomerModel? existingCustomer;
   final int? index;
 
   const CustomerForm({super.key, this.existingCustomer, this.index});
@@ -32,6 +33,7 @@ class _CustomerFormState extends State<CustomerForm> {
   final countryController = TextEditingController();
 
   bool isEditing = false;
+  final uuid = Uuid();
 
   @override
   void initState() {
@@ -41,7 +43,7 @@ class _CustomerFormState extends State<CustomerForm> {
 
   Future<void> _initializeForm() async {
     if (widget.existingCustomer != null) {
-      final c = CustomerModel.fromJson(widget.existingCustomer!);
+      final c = widget.existingCustomer!;
       nameController.text = c.name;
       emailController.text = c.email;
       phoneController.text = c.phone;
@@ -62,9 +64,7 @@ class _CustomerFormState extends State<CustomerForm> {
     if (!_formKey.currentState!.validate()) return;
 
     final customer = CustomerModel(
-      id:
-          widget.existingCustomer?['id'] ??
-          DateTime.now().millisecondsSinceEpoch,
+      id: widget.existingCustomer?.id ?? uuid.v4(),
       company: companyController.text,
       name: nameController.text,
       email: emailController.text,

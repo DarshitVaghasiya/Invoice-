@@ -1,5 +1,5 @@
 class AddItemModel {
-  final int id;
+  final String id;
   final String title;
   final String details;
   final int price;
@@ -19,7 +19,7 @@ class AddItemModel {
   };
 
   factory AddItemModel.fromJson(Map<String, dynamic> json) => AddItemModel(
-    id: json['id'] ?? 0,
+    id: json['id'].toString(),
     title: json['title'] ?? '',
     details: json['details'] ?? '',
     price: json['price'] ?? ','

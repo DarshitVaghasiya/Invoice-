@@ -192,7 +192,7 @@ class _InvoiceListPageState extends State<InvoiceListPage> {
     if (confirmed == true) {
       setState(() {
         AppData().invoices.removeWhere(
-          (inv) => inv.invoiceNo == invoice.invoiceNo,
+          (inv) => inv.invoiceID == invoice.invoiceID,
         );
         invoices = List.from(AppData().invoices);
       });
@@ -258,8 +258,7 @@ class _InvoiceListPageState extends State<InvoiceListPage> {
         return;
       }
 
-      final result = await OpenFilex.open(file.path);
-      // result handling optional: you can show message if open fails
+      await OpenFilex.open(file.path);
     } catch (e, st) {
       // Show simple readable error
       ScaffoldMessenger.of(
@@ -411,7 +410,7 @@ class _InvoiceListPageState extends State<InvoiceListPage> {
                       final customer = customers.firstWhere(
                         (c) => c.id == invoice.customerId,
                         orElse: () => CustomerModel(
-                          id: 0,
+                          id: '',
                           name: 'Unknown Client',
                           email: '',
                           phone: '',

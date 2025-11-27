@@ -4,6 +4,7 @@ import 'package:invoice/models/add_items_model.dart';
 import 'package:invoice/widgets/buttons/custom_elevatedbutton.dart';
 import 'package:invoice/widgets/buttons/custom_iconbutton.dart';
 import 'package:invoice/widgets/buttons/custom_textformfield.dart';
+import 'package:uuid/uuid.dart';
 
 class AddItems extends StatefulWidget {
   final AddItemModel? existingItem; // Use model class instead of Map
@@ -23,6 +24,7 @@ class _AddItemsState extends State<AddItems> {
   final price = TextEditingController();
 
   bool isEditing = false;
+  final uuid = Uuid();
 
   @override
   void initState() {
@@ -46,7 +48,7 @@ class _AddItemsState extends State<AddItems> {
   void saveItem() {
     if (_formKey.currentState!.validate()) {
       final newItem = AddItemModel(
-        id: widget.existingItem?.id ?? DateTime.now().millisecondsSinceEpoch,
+        id: widget.existingItem?.id ?? uuid.v4(),
         title: title.text.trim(),
         details: details.text.trim(),
         price: int.tryParse(price.text) ?? 0,

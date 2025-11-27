@@ -204,7 +204,7 @@ class _InvoiceFormPageState extends State<InvoiceFormPage> {
       final foundCustomer = AppData().customers.firstWhere(
         (c) => c.id == i.customerId,
         orElse: () => CustomerModel(
-          id: 0,
+          id: '',
           name: '',
           company: '',
           email: '',

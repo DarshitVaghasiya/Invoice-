@@ -42,9 +42,6 @@ class _BankAccountListMasonryState extends State<BankAccountListMasonry>
   Future<void> _loadAccounts() async {
     setState(() => isLoading = true);
 
-    // Load full AppData again (fresh from storage)
-    await AppData().loadAllData();
-
     setState(() {
       accounts = AppData().profile!.bankAccounts!;
       isLoading = false;
@@ -52,7 +49,6 @@ class _BankAccountListMasonryState extends State<BankAccountListMasonry>
 
     _controller.forward();
   }
-
 
   @override
   void dispose() {
@@ -79,7 +75,7 @@ class _BankAccountListMasonryState extends State<BankAccountListMasonry>
 
   // ⭐ FIXED — Save data to AppData().bankAccounts
   Future<void> _saveToProfile() async {
-    AppData().bankAccounts = accounts;
+    AppData().profile!.bankAccounts = accounts;
     await AppData().saveAllData();
     widget.onUpdate();
   }
@@ -91,7 +87,7 @@ class _BankAccountListMasonryState extends State<BankAccountListMasonry>
       }
     });
 
-    AppData().bankAccounts = accounts;
+    AppData().profile!.bankAccounts = accounts;
     await AppData().saveAllData();
     widget.onUpdate();
   }
@@ -173,15 +169,26 @@ class _BankAccountListMasonryState extends State<BankAccountListMasonry>
                               editing: widget.editing,
                               height: estimatedHeight,
                               onEdit: (updated) async {
-                                final i = AppData().bankAccounts.indexWhere((b) => b.id == updated.id);
+                                final i = AppData().profile!.bankAccounts!.indexWhere(
+                                  (b) => b.id == updated.id,
+                                );
                                 if (i != -1) {
-                                  AppData().bankAccounts[i] = updated;
+                                  AppData().profile!.bankAccounts![i] = updated;
                                 }
                                 await AppData().saveAllData();
                                 await _loadAccounts();
                                 widget.onUpdate();
                               },
-
+                              onDelete: () async {
+                                // ← NEW
+                                setState(() {
+                                  accounts.removeAt(index);
+                                });
+                                AppData().profile!.bankAccounts = accounts;
+                                await AppData().saveAllData();
+                                await _loadAccounts();
+                                widget.onUpdate();
+                              },
                               onSetPrimary: () => setPrimaryAccount(index),
                             ),
                           );
@@ -208,8 +215,7 @@ class _BankAccountListMasonryState extends State<BankAccountListMasonry>
                 setState(() {
                   accounts.add(result);
                 });
-                AppData().bankAccounts.add(result);
-                await AppData().saveAllData();
+                await _saveToProfile(); // (instead of manually adding + saving)
                 await _loadAccounts();
                 widget.onUpdate();
 
@@ -285,9 +291,8 @@ class _MasonryGlassCard extends StatelessWidget {
   final BankAccountModel bank;
   final bool editing;
   final double height;
-
-  // Callbacks passed from parent
   final void Function(BankAccountModel updated) onEdit;
+  final VoidCallback onDelete;
   final VoidCallback onSetPrimary;
 
   const _MasonryGlassCard({
@@ -295,6 +300,7 @@ class _MasonryGlassCard extends StatelessWidget {
     required this.editing,
     required this.height,
     required this.onEdit,
+    required this.onDelete,
     required this.onSetPrimary,
   });
 
@@ -334,6 +340,8 @@ class _MasonryGlassCard extends StatelessWidget {
                 onEdit(result); // ← update edited bank
               } else if (result == "primary") {
                 onSetPrimary(); // ← set it as primary
+              } else if (result == "delete") {
+                onDelete(); // ← NEW
               }
             },
             child: BackdropFilter(
