@@ -845,7 +845,7 @@ class _InvoiceFormPageState extends State<InvoiceFormPage> {
           label: "Save Invoice",
           icon: Icons.save_rounded,
           onPressed: _saveInvoice,
-          color: const Color(0xFF009A75),
+          backgroundColor: const Color(0xFF009A75),
         ),
       ],
     );

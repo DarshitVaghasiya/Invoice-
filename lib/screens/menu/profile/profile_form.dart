@@ -491,7 +491,7 @@ class _InvoiceProfileFormState extends State<InvoiceProfileForm> {
                           child: CustomElevatedButton(
                             label: isEditing ? "Save" : "Edit",
                             icon: isEditing ? Icons.save : Icons.edit,
-                            color: isEditing
+                            backgroundColor: isEditing
                                 ? const Color(0xFF009A75)
                                 : Colors.orange,
                             onPressed: () {

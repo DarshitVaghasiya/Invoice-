@@ -308,7 +308,10 @@ class InvoiceStorage {
         await downloadsDir.create(recursive: true);
       }
 
-      final file = File("${downloadsDir.path}/Invoices.json");
+      final timestamp = DateTime.now().toIso8601String().replaceAll(":", "-");
+      final file = File("${downloadsDir.path}/invoice_$timestamp.json");
+
+
       await file.writeAsString(jsonString, flush: true);
 
       print("✅ File Successfully Exported In Your Download Folder");
@@ -362,31 +365,31 @@ class InvoiceStorage {
 
       Map<String, dynamic> oldData = await _loadData();
 
+      // ---------------------- SKIP MODE ----------------------
       if (!userChoiceReplace) {
-        // ---------------- SKIP MODE ----------------
         newData.forEach((key, value) {
-          // direct list keys (customer, item, invoice)
+          // LIST KEYS → customers, items, invoices
           if (oldData[key] is List && value is List) {
             List oldList = oldData[key];
             List newList = value;
 
             for (var newItem in newList) {
-              final newId = newItem["id"] ?? newItem["invoiceID"];
+              final newId = newItem["id"] ?? newItem["invoiceNo"];
               final exists = oldList.any(
-                (item) => item["id"] == newId || item["invoiceID"] == newId,
+                    (item) =>
+                item["id"] == newId ||
+                    item["invoiceNo"] == newId,
               );
-
-              if (!exists) oldList.add(newItem);
+              if (!exists) oldList.add(newItem); // add only if not exists
             }
           }
-          // profile
+
+          // PROFILE → merge but skip duplicate bank accounts
           else if (key == "profile" && value is Map) {
             if (oldData[key] is! Map) {
               oldData[key] = value;
             } else {
-              Map<String, dynamic> newProfile = Map<String, dynamic>.from(
-                value,
-              );
+              Map<String, dynamic> newProfile = Map<String, dynamic>.from(value);
               newProfile.remove("bankAccounts");
               oldData[key].addAll(newProfile);
 
@@ -403,40 +406,42 @@ class InvoiceStorage {
               }
             }
           }
-          // others
+
+          // OTHER MAP KEYS → add only if key not found
           else {
             if (!oldData.containsKey(key)) oldData[key] = value;
           }
         });
-      } else {
-        // ---------------- SMART REPLACE MODE ----------------
+      }
+
+      // ---------------------- SMART REPLACE MODE ----------------------
+      else {
         newData.forEach((key, value) {
-          // direct list keys (customer, item, invoice)
+          // LIST KEYS → customers, items, invoices
           if (oldData[key] is List && value is List) {
             List oldList = oldData[key];
             List newList = value;
 
             for (var newItem in newList) {
-              final newId = newItem["id"] ?? newItem["invoiceID"];
+              final newId = newItem["id"] ?? newItem["invoiceNo"];
               final index = oldList.indexWhere(
-                (item) => item["id"] == newId || item["invoiceID"] == newId,
+                    (item) =>
+                item["id"] == newId ||
+                    item["invoiceNo"] == newId,
               );
-
-              if (index != -1) {
+              if (index != -1)
                 oldList[index] = newItem; // replace
-              } else {
+              else
                 oldList.add(newItem); // add
-              }
             }
           }
-          // profile
+
+          // PROFILE → merge + replace bank accounts
           else if (key == "profile" && value is Map) {
             if (oldData[key] is! Map) {
               oldData[key] = value;
             } else {
-              Map<String, dynamic> newProfile = Map<String, dynamic>.from(
-                value,
-              );
+              Map<String, dynamic> newProfile = Map<String, dynamic>.from(value);
               newProfile.remove("bankAccounts");
               oldData[key].addAll(newProfile);
 
@@ -447,20 +452,17 @@ class InvoiceStorage {
 
                 for (var bank in newBanks) {
                   final newBankId = bank["id"];
-                  final index = oldBanks.indexWhere(
-                    (b) => b["id"] == newBankId,
-                  );
-
-                  if (index != -1) {
+                  final index = oldBanks.indexWhere((b) => b["id"] == newBankId);
+                  if (index != -1)
                     oldBanks[index] = bank; // replace
-                  } else {
+                  else
                     oldBanks.add(bank); // add
-                  }
                 }
               }
             }
           }
-          // other map keys → full overwrite
+
+          // OTHER KEYS → full overwrite
           else {
             oldData[key] = value;
           }
@@ -475,6 +477,7 @@ class InvoiceStorage {
       return false;
     }
   }
+
 }
 
 class PdfSaver {

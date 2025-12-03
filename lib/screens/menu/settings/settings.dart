@@ -1,16 +1,14 @@
-import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:invoice/Global%20Veriables/global_veriable.dart';
 import 'package:invoice/app_data/app_data.dart';
 import 'package:invoice/data_storage/InvoiceStorage.dart';
 import 'package:invoice/models/bank_account_model.dart';
 import 'package:invoice/models/settings_model.dart';
 import 'package:invoice/screens/home/invoice_list.dart';
-import 'package:invoice/screens/menu/settings/Add_Custom_Field/add_custom_fields.dart';
 import 'package:invoice/screens/menu/settings/BankAccounts/bank_accounts.dart';
 import 'package:invoice/screens/menu/settings/Signature/signature.dart';
-import 'package:invoice/screens/menu/settings/import_export_file/import_export.dart';
 import 'package:invoice/widgets/buttons/custom_dialog.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
@@ -81,6 +79,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _importData() async {
+
+    if (!isPurchase) {
+      showLimitDialog("Import is available in Premium only.");
+      return;
+    }
+
+
     final selectedFile = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['json'],
@@ -106,13 +111,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
         context: context,
         title: "Import Data",
         message:
-            "Some IDs already exist in current data.\nHow do you want to handle duplicates?",
-        confirmText: "Replace",
-        cancelText: "Skip",
+            "Some records already exist in your system.\nDo you want to replace them or skip your existing ones?",
+        btn3: "Replace",
+        btn2: "Skip",
+        btn1: "Cancel",
+        btn3Color: Color(0xFF0072FF),
+        btn2Color: Color(0xFF6D6D6D),
+        btn1Color: Color(0xFFE53935),
+        addButton: true,
       );
 
-      if (result == null) return; // if cancelled
-      userReplaceChoice = result; // true = replace, false = skip
+      if (result == null) return;
+      userReplaceChoice = result;
     }
 
     // 3️⃣ Import
@@ -138,14 +148,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _exportData() async {
+
+    if (!isPurchase) {
+      showLimitDialog("Export is available in Premium only.");
+      return;
+    }
+
+
     final confirmed = await showCustomAlertDialog(
       context: context,
       title: "Export File",
       message: "Are you sure you want to export all data?",
-      confirmText: "Yes",
-      cancelText: "No",
-      confirmColor: Colors.green,
-      cancelColor: Colors.red,
+      btn3: "Yes",
+      btn2: "No",
+      btn3Color: Color(0xFF009A75),
+      btn2Color: Colors.red,
     );
 
     if (confirmed == true) {
@@ -226,16 +243,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 crossAxisSpacing: spacing,
                 childAspectRatio: childAspectRatio,
                 children: [
-                  SettingTile(
-                    title: "Import File",
-                    icon: Icons.download_outlined,
-                    onTap: _importData,
-                  ),
-                  SettingTile(
-                    title: "Export File",
-                    icon: Icons.upload_outlined,
-                    onTap: _exportData,
-                  ),
+
                   SettingTile(
                     title: "Choose Invoice Template",
                     subtitle: settings?.selectedTemplate,
@@ -380,6 +388,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         await saveSettings(settings!);
                       }
                     },
+                  ),
+                  SettingTile(
+                    title: "Import File",
+                    icon: Icons.download_outlined,
+                    onTap: _importData,
+                  ),
+                  SettingTile(
+                    title: "Export File",
+                    icon: Icons.upload_outlined,
+                    onTap: _exportData,
                   ),
                   SettingTile(
                     title: "FAQ",

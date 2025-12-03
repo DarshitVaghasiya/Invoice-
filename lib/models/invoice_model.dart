@@ -80,7 +80,7 @@ class InvoiceModel {
       qtyLabel: json['qtyLabel'] ?? "Qty",
       rateLabel: json['rateLabel'] ?? "Price",
       customLabels: Map<String, String>.from(json["customLabels"] ?? {}),
-      items: (json["items"] as List).map((e) => ItemModel.fromJson(e)).toList(),
+      items: List<ItemModel>.from(json['items'].map((x) => ItemModel.fromJson(x))),
       subtotal: (json['subtotal'] ?? 0).toDouble(),
       discount: json['discount'] ?? "0",
       discountAmount: (json['discountAmount'] ?? 0).toDouble(),

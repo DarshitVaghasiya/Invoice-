@@ -1,10 +1,12 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:invoice/Global%20Veriables/global_veriable.dart';
 import 'package:invoice/Screens/Menu/Customers/customer_list.dart';
 import 'package:invoice/Screens/Menu/Items/items_list.dart';
 import 'package:invoice/Screens/Menu/Profile/profile_form.dart';
 import 'package:invoice/Screens/Menu/Settings/settings.dart';
 import 'package:invoice/app_data/app_data.dart';
+import 'package:invoice/screens/menu/Upgrade%20Plan/upgrade_plan.dart';
 
 class AppDrawer extends StatefulWidget {
   const AppDrawer({super.key});
@@ -66,103 +68,138 @@ class _AppDrawerState extends State<AppDrawer> {
 
   @override
   Widget build(BuildContext context) {
-    return Drawer(
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.only(
-          topRight: Radius.circular(24),
-          bottomRight: Radius.circular(24),
+    double screenWidth = MediaQuery
+        .of(context)
+        .size
+        .width;
+    double drawerWidth = screenWidth < 600 ? screenWidth * 0.85 : 350;
+
+    return SizedBox(
+      width: drawerWidth,
+      child: Drawer(
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.only(
+            topRight: Radius.circular(24),
+            bottomRight: Radius.circular(24),
+          ),
         ),
-      ),
-      child: ListView(
-        padding: EdgeInsets.zero,
-        children: [
-          UserAccountsDrawerHeader(
-            decoration: const BoxDecoration(color: Color(0xFF008A6D)),
-            accountName: Text(
-              name ?? "Loading...",
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            accountEmail: Text(email ?? ""),
-            currentAccountPicture: CircleAvatar(
-              backgroundColor: Colors.white,
-              backgroundImage: (imagePath != null && imagePath!.isNotEmpty)
-                  ? MemoryImage(base64Decode(imagePath!)) // ✅ Decode Base64 string
-                  : null,
-              child: (imagePath == null || imagePath!.isEmpty)
-                  ? const Icon(Icons.person, size: 40, color: Color(0xFF00A884))
-                  : null,
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            UserAccountsDrawerHeader(
+              decoration: const BoxDecoration(color: Color(0xFF008A6D)),
+              accountName: Text(
+                name ?? "Loading...",
+                style: const TextStyle(
+                    fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              accountEmail: Text(email ?? ""),
+              currentAccountPicture: CircleAvatar(
+                backgroundColor: Colors.white,
+                backgroundImage: (imagePath != null && imagePath!.isNotEmpty)
+                    ? MemoryImage(
+                    base64Decode(imagePath!)) // ✅ Decode Base64 string
+                    : null,
+                child: (imagePath == null || imagePath!.isEmpty)
+                    ? const Icon(
+                    Icons.person, size: 40, color: Color(0xFF00A884))
+                    : null,
+              ),
+
             ),
 
-          ),
-
-          // Profile
-          ListTile(
-            leading: const Icon(Icons.person_outline, color: Color(0xFF00A884)),
-            title: const Text(
-              "Profile",
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            onTap: () async {
-              Navigator.pop(context);
-              await Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const InvoiceProfileForm(),
+            // Upgrade Plan
+            if(!isPurchase)
+              ListTile(
+                leading: const Icon(
+                    Icons.arrow_circle_up, color: Color(0xFFFF1744)),
+                title: const Text(
+                  "Upgrade",
+                  style: TextStyle(fontWeight: FontWeight.bold),
                 ),
-              );
-              await loadProfileData(); // refresh after profile change
-            },
-          ),
+                onTap: () async {
+                  Navigator.pop(context);
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const PlanPage(),
+                    ),
+                  );
+                  await loadProfileData(); // refresh after profile change
+                },
+              ),
 
-          // Customer List
-          ListTile(
-            leading: const Icon(Icons.groups, color: Colors.purple),
-            title: const Text(
-              "Customer List",
-              style: TextStyle(fontWeight: FontWeight.bold),
+            // Profile
+            ListTile(
+              leading: const Icon(
+                  Icons.person_outline, color: Color(0xFF00A884)),
+              title: const Text(
+                "Profile",
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              onTap: () async {
+                Navigator.pop(context);
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const InvoiceProfileForm(),
+                  ),
+                );
+                await loadProfileData(); // refresh after profile change
+              },
             ),
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const CustomerList()),
-              );
-            },
-          ),
 
-          // Items List
-          ListTile(
-            leading: const Icon(Icons.view_list, color: Colors.blue),
-            title: const Text(
-              "Items List",
-              style: TextStyle(fontWeight: FontWeight.bold),
+            // Customer List
+            ListTile(
+              leading: const Icon(Icons.groups, color: Colors.purple),
+              title: const Text(
+                "Customer List",
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const CustomerList()),
+                );
+              },
             ),
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const ItemsList()),
-              );
-            },
-          ),
 
-          // Settings
-          ListTile(
-            leading: const Icon(Icons.settings_outlined, color: Colors.grey),
-            title: const Text(
-              "Settings",
-              style: TextStyle(fontWeight: FontWeight.bold),
+            // Items List
+            ListTile(
+              leading: const Icon(Icons.view_list, color: Colors.blue),
+              title: const Text(
+                "Items List",
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const ItemsList()),
+                );
+              },
             ),
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const SettingsScreen()),
-              );
-            },
-          ),
-        ],
+
+            // Settings
+            ListTile(
+              leading: const Icon(Icons.settings_outlined, color: Colors.grey),
+              title: const Text(
+                "Settings",
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => const SettingsScreen()),
+                );
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
-}
+  }

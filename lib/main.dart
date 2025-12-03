@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:invoice/Screens/Menu/Profile/profile_form.dart';
 import 'package:invoice/screens/home/invoice_list.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'Global Veriables/global_veriable.dart';
 import 'app_data/app_data.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  final prefs = await SharedPreferences.getInstance();
+  isPurchase = prefs.getBool("isPurchase") ?? false;
+
   await AppData().loadAllData();
   final profile = AppData().profile;
   runApp(MyApp(showProfileForm: profile == null));
@@ -43,6 +49,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: navigatorKey,
       debugShowCheckedModeBanner: false,
       home: widget.showProfileForm == true
           ? const InvoiceProfileForm()

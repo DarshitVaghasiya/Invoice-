@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:invoice/Global%20Veriables/global_veriable.dart';
+import 'package:invoice/app_data/app_data.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class InvoiceTemplates extends StatefulWidget {
@@ -27,23 +29,16 @@ class _InvoiceTemplatesState extends State<InvoiceTemplates> {
   }
 
   // 🔹 Load previously selected template
-  Future<void> _loadSelectedTemplate() async {
-    final prefs = await SharedPreferences.getInstance();
-    final savedName = prefs.getString('selectedTemplate');
-    if (savedName != null) {
-      final index = templates.indexWhere(
-        (t) => t['name']!.toLowerCase() == savedName.toLowerCase(),
-      );
-      if (index != -1) {
-        setState(() => selectedIndex = index);
-      }
-    }
-  }
+  void _loadSelectedTemplate() {
+    final savedName = AppData().settings.selectedTemplate;
 
-  // 🔹 Save selected template
-  Future<void> _saveSelectedTemplate(String name) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('selectedTemplate', name);
+    final index = templates.indexWhere(
+      (t) => t['name']!.toLowerCase() == savedName.toLowerCase(),
+    );
+
+    if (index != -1) {
+      selectedIndex = index;
+    }
   }
 
   @override
@@ -92,10 +87,22 @@ class _InvoiceTemplatesState extends State<InvoiceTemplates> {
 
                 return GestureDetector(
                   onTap: () async {
+                    if (!isPurchase && index > 1) {
+                      showLimitDialog(
+                        "This template is available for Premium only.\nUpgrade to unlock all templates.",
+                      );
+                      return;
+                    }
+
                     final selectedName = item['name']!;
-                    await _saveSelectedTemplate(selectedName);
+
+                    // 🔥 Save to SettingsModel instead of SharedPreferences
+                    AppData().settings.selectedTemplate = selectedName;
+                    await AppData().saveAllData();
+
                     if (mounted) Navigator.pop(context, selectedName);
                   },
+
                   child: Stack(
                     children: [
                       // 🔹 Card with border if selected
@@ -170,6 +177,21 @@ class _InvoiceTemplatesState extends State<InvoiceTemplates> {
                               Icons.check,
                               size: 18,
                               color: Colors.white,
+                            ),
+                          ),
+                        ),
+
+                      // 🔒 Lock overlay for premium templates (index > 1 & not purchased)
+                      if (!isPurchase && index > 1)
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.4),
+                          ),
+                          child: const Center(
+                            child: Icon(
+                              Icons.lock,
+                              color: Colors.white,
+                              size: 40,
                             ),
                           ),
                         ),

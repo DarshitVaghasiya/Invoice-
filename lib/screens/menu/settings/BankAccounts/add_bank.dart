@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:invoice/app_data/app_data.dart';
 import 'package:invoice/models/bank_account_model.dart';
-import 'package:invoice/widgets/buttons/custom_dialog.dart';
 import 'package:invoice/widgets/buttons/custom_elevatedbutton.dart';
+import 'package:invoice/widgets/buttons/custom_iconbutton.dart';
 import 'package:invoice/widgets/buttons/custom_textformfield.dart';
 import 'package:uuid/uuid.dart';
 
@@ -25,259 +25,289 @@ class _AddBankAccountState extends State<AddBankAccount> {
   final upiController = TextEditingController();
 
   bool isPrimary = false;
-  late List<BankAccountModel> accounts;
   final uuid = Uuid();
 
   @override
   void initState() {
     super.initState();
-
     if (widget.existing != null) {
       bankNameController.text = widget.existing!.bankName;
       accountHolderController.text = widget.existing!.accountHolder;
       accountNumberController.text = widget.existing!.accountNumber;
       ifscController.text = widget.existing!.ifsc;
       upiController.text = widget.existing!.upi;
-
       isPrimary = widget.existing!.isPrimary;
     }
   }
-
 
   Future<void> _saveBankAccount() async {
     if (!_formKey.currentState!.validate()) return;
 
     final bankAccount = BankAccountModel(
       id: widget.existing?.id ?? uuid.v4(),
-      bankName: bankNameController.text.trim(),
-      accountHolder: accountHolderController.text.trim(),
-      accountNumber: accountNumberController.text.trim(),
-      ifsc: ifscController.text.trim(),
-      upi: upiController.text.trim(),
+      bankName: bankNameController.text,
+      accountHolder: accountHolderController.text,
+      accountNumber: accountNumberController.text,
+      ifsc: ifscController.text,
+      upi: upiController.text,
       isPrimary: isPrimary,
     );
 
-    final appData = AppData();
-    final profile =
-        appData.profile!.bankAccounts; // ⬅ profile is a single ProfileModel
+    final profile = AppData().profile!.bankAccounts;
 
     if (profile != null) {
-      // Editing existing bank account
       if (widget.existing != null) {
         final index = profile.indexWhere((b) => b.id == widget.existing!.id);
-        if (index != -1) {
-          profile[index] = bankAccount;
-        }
+        if (index != -1) profile[index] = bankAccount;
       }
-
-      // Ensure only ONE primary
       if (bankAccount.isPrimary) {
         for (var b in profile) {
           if (b.id != bankAccount.id) b.isPrimary = false;
         }
       }
     }
-    print(profile);
+
     Navigator.pop(context, bankAccount);
   }
 
   @override
   Widget build(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+
+    // ── Modern RESPONSIVE BREAKPOINTS ─────────────────────────────────────
+    final isSmallMobile = width < 400; // 360 width phones
+    final isLargeMobile = width >= 400 && width < 600; // 420 wide phones
+    final isMobile = width < 600; // common flag for logic
+    final isTablet = width >= 600 && width < 1100;
+    final isDesktop = width >= 1100;
+
+    final double titleFont = isSmallMobile
+        ? 22
+        : isLargeMobile
+        ? 25
+        : isTablet
+        ? 30
+        : 34;
+    final double cardTitleFont = isSmallMobile
+        ? 20
+        : isLargeMobile
+        ? 22
+        : isTablet
+        ? 24
+        : 26;
+
+    final double spacing = isSmallMobile
+        ? 12
+        : isLargeMobile
+        ? 14
+        : isTablet
+        ? 20
+        : 26;
+    final double horizontalPadding = isSmallMobile
+        ? 14
+        : isLargeMobile
+        ? 20
+        : isTablet
+        ? 32
+        : 60;
+
+    final int formGridColumns = isMobile
+        ? 1
+        : isTablet
+        ? 1
+        : 2;
+
+    final double iconSize = isSmallMobile
+        ? 35
+        : isLargeMobile
+        ? 40
+        : 50;
+
+    // ─────────────────────────────────────────────────────────────────────
+
     return Scaffold(
       backgroundColor: const Color(0xFFF0F2F5),
 
       appBar: AppBar(
         title: Text(
           widget.existing == null ? "Add Bank Account" : "Edit Bank Account",
-          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700),
+          style: TextStyle(fontSize: titleFont, fontWeight: FontWeight.bold),
         ),
         backgroundColor: const Color(0xFFF0F2F5),
-        elevation: 0,
         centerTitle: true,
+        elevation: 0,
+        scrolledUnderElevation: 0,
         actions: [
-          PopupMenuButton<int>(
-            color: const Color(0xFFF0F2F5),
-            icon: const Text(
-              "︙",
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          if (!isMobile)
+            CustomIconButton(
+              label: "Save",
+              icon: Icons.save_rounded,
+              textColor: Colors.white,
+              iconSize: titleFont,
+              fontSize: 22,
+              backgroundColor: const Color(0xFF009A75),
+              padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 14),
+              onTap: _saveBankAccount,
             ),
-
-            onSelected: (value) async {
-              if (value == 1) {
-                Navigator.pop(context, "primary");
-              } else if (value == 2) {
-                if (widget.existing == null) {
-                  await showCustomAlertDialog(
-                    context: context,
-                    title: "Cannot Delete",
-                    message:
-                        "Please add bank details before deleting this account.",
-                    icon: Icons.info_outline,
-                    iconColor: Colors.blueAccent,
-                    singleButton: true,
-                    confirmColor: Color(0xFF009A75),
-                  );
-                  return;
-                }
-                final confirm = await showCustomAlertDialog(
-                  context: context,
-                  title: "Delete Account",
-                  message: "Are you sure you want to delete this account?",
-                );
-
-                if (confirm == true) {
-                  Navigator.pop(context, "delete"); // return delete signal
-                }
-              }
+          PopupMenuButton<int>(
+            color: Colors.white,
+            icon: Text("︙", style: TextStyle(fontSize: isMobile ? 22 : 26)),
+            onSelected: (value) {
+              if (value == 1) Navigator.pop(context, "primary");
+              if (value == 2) Navigator.pop(context, "delete");
             },
-
             itemBuilder: (context) => [
-              if (widget.existing != null &&
-                  widget.existing!.isPrimary == false)
+              if (widget.existing?.isPrimary == false)
                 const PopupMenuItem(value: 1, child: Text("Set Primary")),
-
               const PopupMenuItem(value: 2, child: Text("Remove Account")),
             ],
           ),
+          const SizedBox(width: 8),
         ],
       ),
 
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            // TOP HEADER CARD
-            Container(
-              padding: const EdgeInsets.all(22),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(18),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.07),
-                    blurRadius: 8,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
-              ),
-              child: Column(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(18),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF80CBC4), Color(0xFF009688)],
+        padding: EdgeInsets.symmetric(
+          horizontal: horizontalPadding,
+          vertical: spacing,
+        ),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 900),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // ── PROFILE HEADER CARD ────────────────────────────────────
+                Container(
+                  padding: EdgeInsets.all(spacing * 1.6),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(22),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.06),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
                       ),
-                    ),
-                    child: const Icon(
-                      Icons.account_balance,
-                      size: 44,
-                      color: Colors.white,
-                    ),
+                    ],
                   ),
-                  const SizedBox(height: 14),
-                  Text(
-                    widget.existing == null
-                        ? "Bank Account Details"
-                        : "Update Your Bank Details",
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w700,
-                    ),
+                  child: Column(
+                    children: [
+                      Container(
+                        padding: EdgeInsets.all(isMobile ? 18 : 28),
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
+                            colors: [Color(0xFFA5E6D7), Color(0xFF009A75)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                        ),
+                        child: Icon(
+                          Icons.account_balance,
+                          size: iconSize,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        widget.existing == null
+                            ? "Bank Account Details"
+                            : "Update Your Bank Details",
+                        style: TextStyle(
+                          fontSize: cardTitleFont,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      const Text(
+                        "Provide the required information to continue",
+                        style: TextStyle(color: Colors.black54),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 5),
-                  const Text(
-                    "Please fill in the necessary information",
-                    style: TextStyle(fontSize: 14, color: Colors.grey),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 25),
-
-            // FORM CARD
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 22),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.grey.shade200),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 6,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
-              ),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  children: [
-                    textFormField(
-                      labelText: "Bank Name",
-                      controller: bankNameController,
-                      validator: (v) => v!.isEmpty ? "Enter bank name" : null,
-                    ),
-                    const SizedBox(height: 15),
-
-                    textFormField(
-                      labelText: "Account Holder Name",
-                      controller: accountHolderController,
-                      validator: (v) =>
-                          v!.isEmpty ? "Enter account holder name" : null,
-                    ),
-                    const SizedBox(height: 15),
-
-                    textFormField(
-                      labelText: "Account Number",
-                      controller: accountNumberController,
-                      keyboardType: TextInputType.number,
-                      validator: (v) =>
-                          v!.isEmpty ? "Enter account number" : null,
-                    ),
-                    const SizedBox(height: 15),
-
-                    textFormField(
-                      labelText: "IFSC Code",
-                      controller: ifscController,
-                      validator: (v) => v!.isEmpty ? "Enter IFSC code" : null,
-                    ),
-                    const SizedBox(height: 15),
-
-                    textFormField(
-                      labelText: "UPI ID (Optional)",
-                      controller: upiController,
-                    ),
-                  ],
                 ),
-              ),
+
+                SizedBox(height: spacing * 2),
+
+                Text(
+                  "Account Information",
+                  style: TextStyle(
+                    fontSize: isMobile ? 19 : 22,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+
+                const SizedBox(height: 14),
+
+                // ── FORM CARD ─────────────────────────────────────────────
+                Container(
+                  padding: EdgeInsets.all(isMobile ? 18 : spacing),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: Colors.black12),
+                  ),
+                  child: Form(
+                    key: _formKey,
+                    child: GridView.count(
+                      physics: const NeverScrollableScrollPhysics(),
+                      shrinkWrap: true,
+                      crossAxisCount: formGridColumns,
+                      mainAxisSpacing: spacing,
+                      crossAxisSpacing: spacing,
+                      childAspectRatio: isMobile ? 6.5 : 6.8,
+                      children: [
+                        textFormField(
+                          labelText: "Bank Name",
+                          controller: bankNameController,
+                          validator: (v) =>
+                              v!.isEmpty ? "Enter bank name" : null,
+                        ),
+                        textFormField(
+                          labelText: "Account Holder Name",
+                          controller: accountHolderController,
+                          validator: (v) =>
+                              v!.isEmpty ? "Enter account holder name" : null,
+                        ),
+                        textFormField(
+                          labelText: "Account Number",
+                          controller: accountNumberController,
+                          keyboardType: TextInputType.number,
+                          validator: (v) =>
+                              v!.isEmpty ? "Enter account number" : null,
+                        ),
+                        textFormField(
+                          labelText: "IFSC Code",
+                          controller: ifscController,
+                          validator: (v) =>
+                              v!.isEmpty ? "Enter IFSC code" : null,
+                        ),
+                        textFormField(
+                          labelText: "UPI ID (Optional)",
+                          controller: upiController,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
 
-      bottomNavigationBar: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black12,
-              blurRadius: 6,
-              offset: Offset(0, -2),
-            ),
-          ],
-        ),
-        child: CustomElevatedButton(
-          label: "Save Bank Details",
-          icon: Icons.save_rounded,
-          color: const Color(0xFF009A75),
-          onPressed: _saveBankAccount,
-        ),
-      ),
+      bottomNavigationBar: isMobile
+          ? Container(
+              padding: const EdgeInsets.fromLTRB(26, 12, 26, 26),
+              child: CustomElevatedButton(
+                label: "Save Bank Details",
+                icon: Icons.save_rounded,
+                backgroundColor: const Color(0xFF009A75),
+                onPressed: _saveBankAccount,
+              ),
+            )
+          : null,
     );
   }
 }

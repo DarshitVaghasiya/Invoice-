@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
+import 'package:invoice/Global%20Veriables/global_veriable.dart';
 import 'package:invoice/app_data/app_data.dart';
 import 'package:invoice/models/customer_model.dart';
 import 'package:invoice/widgets/buttons/custom_dialog.dart';
@@ -56,11 +57,11 @@ class _CustomerListState extends State<CustomerList>
       context: context,
       title: "Delete Customers",
       message:
-      "Are you sure you want to permanently delete customer? This action cannot be undone.",
+          "Are you sure you want to permanently delete customer? This action cannot be undone.",
       icon: Icons.warning_amber_rounded,
       iconColor: Colors.red,
-      confirmText: "Delete",
-      cancelText: "Cancel",
+      btn3: "Delete",
+      btn2: "Cancel",
     );
 
     if (confirmed == true) {
@@ -196,6 +197,11 @@ class _CustomerListState extends State<CustomerList>
           ),
           floatingActionButton: FloatingActionButton.extended(
             onPressed: () async {
+              if (!isPurchase && customers.length >= 3) {
+                showLimitDialog("Only 3 customers allowed in Free plan.");
+                return;
+              }
+
               await Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const CustomerForm()),

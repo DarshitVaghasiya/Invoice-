@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
+import 'package:invoice/Global%20Veriables/global_veriable.dart';
 import 'package:invoice/app_data/app_data.dart';
 import 'package:invoice/models/customer_model.dart';
 import 'package:invoice/models/invoice_model.dart';
@@ -158,6 +159,11 @@ class _InvoiceListPageState extends State<InvoiceListPage> {
   }
 
   Future<void> _createNewInvoice() async {
+    if (!isPurchase && invoices.length >= 10) {
+      showLimitDialog("You can create only 10 invoices in Free plan.\nUpgrade to create unlimited invoices.");
+      return; // Stop further execution
+    }
+
     final newInvoice = await Navigator.push<InvoiceModel>(
       context,
       MaterialPageRoute(builder: (context) => const InvoiceFormPage()),
@@ -185,8 +191,8 @@ class _InvoiceListPageState extends State<InvoiceListPage> {
           "Are you sure you want to permanently delete invoice ${invoice.invoiceNo}? This action cannot be undone.",
       icon: Icons.warning_amber_rounded,
       iconColor: Colors.red,
-      confirmText: "Delete",
-      cancelText: "Cancel",
+      btn3: "Delete",
+      btn2: "Cancel",
     );
 
     if (confirmed == true) {
@@ -199,7 +205,7 @@ class _InvoiceListPageState extends State<InvoiceListPage> {
     }
   }
 
-  Future<void> _toggleStatus(InvoiceModel invoice) async {
+  Future<void> _paymentStatus(InvoiceModel invoice) async {
     final index = AppData().invoices.indexWhere(
       (inv) => inv.invoiceNo == invoice.invoiceNo,
     );
@@ -277,6 +283,7 @@ class _InvoiceListPageState extends State<InvoiceListPage> {
 
     final double padding = Responsive.scale(context, 18);
     final int crossAxisCount = isMobile ? 1 : (isTablet ? 2 : 3);
+    final double titleFontSize = isMobile ? 24 : (isTablet ? 28 : 32);
 
     final filteredInvoices = invoices.where((invoice) {
       if (selectedFilter == "paid") return invoice.status == "paid";
@@ -297,7 +304,7 @@ class _InvoiceListPageState extends State<InvoiceListPage> {
           "Invoice Dashboard",
           style: TextStyle(
             fontWeight: FontWeight.bold,
-            fontSize: Responsive.scale(context, 24),
+            fontSize: titleFontSize,
           ),
         ),
         actions: [
@@ -544,7 +551,7 @@ class _InvoiceListPageState extends State<InvoiceListPage> {
                       color: Colors.grey.shade600,
                     ),
                   ),
-                  SizedBox(height: Responsive.scale(context, 6)),
+                  // SizedBox(height: Responsive.scale(context, 6)),
                   Text(
                     "${invoice.currencySymbol ?? '\$'} ${invoice.total.toStringAsFixed(2)}",
                     style: TextStyle(
@@ -579,7 +586,7 @@ class _InvoiceListPageState extends State<InvoiceListPage> {
             ],
           ),
 
-          SizedBox(height: Responsive.scale(context, 10)),
+          SizedBox(height: Responsive.scale(context, 5)),
 
           // Client + Due Date Row
           Row(
@@ -597,7 +604,6 @@ class _InvoiceListPageState extends State<InvoiceListPage> {
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    SizedBox(height: Responsive.scale(context, 6)),
                     SizedBox(
                       width: textWidth,
                       child: Text(
@@ -641,7 +647,6 @@ class _InvoiceListPageState extends State<InvoiceListPage> {
             ],
           ),
 
-          SizedBox(height: Responsive.scale(context, 8)),
           Divider(
             color: Colors.grey.shade300,
             height: Responsive.scale(context, 20),
@@ -711,7 +716,7 @@ class _InvoiceListPageState extends State<InvoiceListPage> {
                         );
 
                         if (confirmed == true) {
-                          _toggleStatus(invoice);
+                          _paymentStatus(invoice);
                         }
                       },
                     ),
@@ -723,7 +728,7 @@ class _InvoiceListPageState extends State<InvoiceListPage> {
               // VIEW
               Expanded(
                 child: CustomIconButton(
-                  label: "View",
+                  label: "PDF",
                   icon: Icons.visibility_outlined,
                   backgroundColor: Colors.blue.shade50,
                   textColor: Colors.blue,

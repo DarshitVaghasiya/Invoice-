@@ -1,4 +1,3 @@
-// bank_account_list_masonry.dart
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
@@ -35,18 +34,13 @@ class _BankAccountListMasonryState extends State<BankAccountListMasonry>
       vsync: this,
       duration: const Duration(milliseconds: 600),
     );
-
     _loadAccounts();
   }
 
   Future<void> _loadAccounts() async {
     setState(() => isLoading = true);
-
-    setState(() {
-      accounts = AppData().profile!.bankAccounts!;
-      isLoading = false;
-    });
-
+    accounts = AppData().profile!.bankAccounts ?? [];
+    setState(() => isLoading = false);
     _controller.forward();
   }
 
@@ -56,24 +50,55 @@ class _BankAccountListMasonryState extends State<BankAccountListMasonry>
     super.dispose();
   }
 
-  int _colsForWidth(double width) {
-    if (width < 600) return 1;
-    if (width < 900) return 2;
-    if (width < 1400) return 3;
-    return 4;
+  /// Device-based responsiveness
+  bool get isMobile => MediaQuery.of(context).size.width < 600;
+
+  bool get isTablet =>
+      MediaQuery.of(context).size.width >= 600 &&
+      MediaQuery.of(context).size.width < 1100;
+
+  bool get isDesktop => MediaQuery.of(context).size.width >= 1100;
+
+  int get crossAxisCount {
+    if (isMobile) return 1;
+    if (isTablet) return 2;
+    return 3; // desktop
   }
 
-  double _estimatedTileHeight(BankAccountModel b, double baseWidth) {
+  double get titleSize => isMobile
+      ? 20
+      : isTablet
+      ? 24
+      : 28;
+
+  double get cardTitleSize => isMobile
+      ? 16.5
+      : isTablet
+      ? 18
+      : 20;
+
+  double get cardHolderSize => isMobile
+      ? 14.5
+      : isTablet
+      ? 15.5
+      : 17;
+
+  double get padding => isMobile
+      ? 14
+      : isTablet
+      ? 22
+      : 30;
+
+  double _estimatedTileHeight(BankAccountModel b) {
     int filled = 0;
     if (b.bankName.isNotEmpty) filled++;
     if (b.accountHolder.isNotEmpty) filled++;
     if (b.accountNumber.isNotEmpty) filled++;
     if (b.ifsc.isNotEmpty) filled++;
     if (b.upi.isNotEmpty) filled++;
-    return 120 + (filled * 20).toDouble();
+    return 130 + (filled * 22);
   }
 
-  // ⭐ FIXED — Save data to AppData().bankAccounts
   Future<void> _saveToProfile() async {
     AppData().profile!.bankAccounts = accounts;
     await AppData().saveAllData();
@@ -86,20 +111,12 @@ class _BankAccountListMasonryState extends State<BankAccountListMasonry>
         accounts[i].isPrimary = (i == index);
       }
     });
-
-    AppData().profile!.bankAccounts = accounts;
-    await AppData().saveAllData();
-    widget.onUpdate();
+    await _saveToProfile();
   }
 
   @override
   Widget build(BuildContext context) {
-    final media = MediaQuery.of(context);
-    final width = media.size.width;
-    final height = media.size.height;
-    final isMobile = width < 600;
-
-    final crossAxisCount = _colsForWidth(width);
+    final width = MediaQuery.of(context).size.width;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF0F2F5),
@@ -108,8 +125,8 @@ class _BankAccountListMasonryState extends State<BankAccountListMasonry>
           'Bank Accounts',
           style: TextStyle(
             color: Colors.black,
-            fontSize: isMobile ? 22 : 28,
-            fontWeight: FontWeight.w800,
+            fontSize: titleSize,
+            fontWeight: FontWeight.w900,
           ),
         ),
         centerTitle: true,
@@ -119,75 +136,57 @@ class _BankAccountListMasonryState extends State<BankAccountListMasonry>
       body: SafeArea(
         child: Padding(
           padding: EdgeInsets.symmetric(
-            horizontal: isMobile ? 14 : 28,
-            vertical: isMobile ? 12 : 20,
+            horizontal: padding,
+            vertical: padding / 1.4,
           ),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
                 child: isLoading
                     ? const Center(child: CircularProgressIndicator())
                     : accounts.isEmpty
-                    ? _emptyState(width, height, isMobile)
+                    ? _emptyState()
                     : MasonryGridView.count(
                         crossAxisCount: crossAxisCount,
-                        mainAxisSpacing: 14,
-                        crossAxisSpacing: 14,
-                        padding: const EdgeInsets.only(bottom: 14),
+                        mainAxisSpacing: 16,
+                        crossAxisSpacing: 16,
+                        padding: const EdgeInsets.only(bottom: 20),
                         itemCount: accounts.length,
-                        itemBuilder: (context, index) {
+                        itemBuilder: (_, index) {
                           final bank = accounts[index];
-                          final estimatedHeight = _estimatedTileHeight(
-                            bank,
-                            width,
-                          );
-
-                          final start = (index * 0.06).clamp(0.0, 0.8);
+                          final estimatedHeight = _estimatedTileHeight(bank);
+                          final delay = (index * 0.08).clamp(0.0, 0.8);
                           final anim = CurvedAnimation(
                             parent: _controller,
-                            curve: Interval(start, 1.0, curve: Curves.easeOut),
+                            curve: Interval(delay, 1.0, curve: Curves.easeOut),
                           );
 
                           return AnimatedBuilder(
                             animation: anim,
-                            builder: (context, child) {
-                              final v = anim.value;
-                              return Opacity(
-                                opacity: v,
-                                child: Transform.translate(
-                                  offset: Offset(0, (1 - v) * 12),
-                                  child: Transform.scale(
-                                    scale: 0.98 + (v * 0.02),
-                                    child: child,
-                                  ),
-                                ),
-                              );
-                            },
+                            builder: (_, child) => Opacity(
+                              opacity: anim.value,
+                              child: Transform.translate(
+                                offset: Offset(0, (1 - anim.value) * 16),
+                                child: child,
+                              ),
+                            ),
                             child: _MasonryGlassCard(
                               bank: bank,
                               editing: widget.editing,
                               height: estimatedHeight,
+                              cardTitleSize: cardTitleSize,
+                              cardHolderSize: cardHolderSize,
                               onEdit: (updated) async {
-                                final i = AppData().profile!.bankAccounts!.indexWhere(
-                                  (b) => b.id == updated.id,
-                                );
-                                if (i != -1) {
-                                  AppData().profile!.bankAccounts![i] = updated;
-                                }
-                                await AppData().saveAllData();
+                                final i = AppData().profile!.bankAccounts!
+                                    .indexWhere((b) => b.id == updated.id);
+                                if (i != -1) accounts[i] = updated;
+                                await _saveToProfile();
                                 await _loadAccounts();
-                                widget.onUpdate();
                               },
                               onDelete: () async {
-                                // ← NEW
-                                setState(() {
-                                  accounts.removeAt(index);
-                                });
-                                AppData().profile!.bankAccounts = accounts;
-                                await AppData().saveAllData();
+                                setState(() => accounts.removeAt(index));
+                                await _saveToProfile();
                                 await _loadAccounts();
-                                widget.onUpdate();
                               },
                               onSetPrimary: () => setPrimaryAccount(index),
                             ),
@@ -200,83 +199,55 @@ class _BankAccountListMasonryState extends State<BankAccountListMasonry>
         ),
       ),
 
-      floatingActionButton: ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-          child: FloatingActionButton.extended(
-            onPressed: () async {
-              final result = await Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => AddBankAccount()),
-              );
-
-              if (result != null && result is BankAccountModel) {
-                setState(() {
-                  accounts.add(result);
-                });
-                await _saveToProfile(); // (instead of manually adding + saving)
-                await _loadAccounts();
-                widget.onUpdate();
-
-              }
-            },
-            icon: const Icon(Icons.add),
-            label: const Text(
-              'Add Bank Account',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            backgroundColor: const Color(0xFF009A75),
-            foregroundColor: Colors.white,
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () async {
+          final result = await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => AddBankAccount()),
+          );
+          if (result != null && result is BankAccountModel) {
+            setState(() => accounts.add(result));
+            await _saveToProfile();
+            await _loadAccounts();
+          }
+        },
+        icon: const Icon(Icons.add),
+        label: Text(
+          'Add Bank Account',
+          style: TextStyle(
+            fontSize: isMobile ? 15 : 18,
+            fontWeight: FontWeight.bold,
           ),
         ),
+        backgroundColor: const Color(0xFF009A75),
+        foregroundColor: Colors.white,
       ),
     );
   }
 
-  Widget _emptyState(double w, double h, bool isMobile) {
+  Widget _emptyState() {
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            width: isMobile ? 120 : 140,
-            height: isMobile ? 120 : 140,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(28),
-              gradient: LinearGradient(
-                colors: [
-                  Colors.black.withOpacity(0.06),
-                  Colors.black.withOpacity(0.02),
-                ],
-              ),
-              border: Border.all(color: Colors.black.withOpacity(0.04)),
-            ),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-              child: Center(
-                child: Icon(
-                  Icons.account_balance,
-                  color: Colors.black,
-                  size: isMobile ? 46 : 56,
-                ),
-              ),
-            ),
+          const Icon(
+            Icons.account_balance_wallet,
+            size: 64,
+            color: Colors.black45,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
           Text(
-            'No bank accounts yet',
+            "No bank accounts yet",
             style: TextStyle(
-              color: Colors.black,
-              fontSize: isMobile ? 16 : 18,
-              fontWeight: FontWeight.w600,
+              fontSize: cardTitleSize,
+              fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(height: 8),
-          const Text(
-            'Add your bank account or UPI ID to get started.',
+          const SizedBox(height: 6),
+          Text(
+            "Add your bank account or UPI ID to get started.",
             textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.black),
+            style: TextStyle(fontSize: isMobile ? 13 : 15),
           ),
         ],
       ),
@@ -284,13 +255,17 @@ class _BankAccountListMasonryState extends State<BankAccountListMasonry>
   }
 }
 
-/// ------------------------------------------------------
-/// CARD WIDGET
-/// ------------------------------------------------------
+//
+// ──────────────────────────────────────────────────────────────
+// CARD WIDGET
+// ──────────────────────────────────────────────────────────────
+//
 class _MasonryGlassCard extends StatelessWidget {
   final BankAccountModel bank;
   final bool editing;
   final double height;
+  final double cardTitleSize;
+  final double cardHolderSize;
   final void Function(BankAccountModel updated) onEdit;
   final VoidCallback onDelete;
   final VoidCallback onSetPrimary;
@@ -299,6 +274,8 @@ class _MasonryGlassCard extends StatelessWidget {
     required this.bank,
     required this.editing,
     required this.height,
+    required this.cardTitleSize,
+    required this.cardHolderSize,
     required this.onEdit,
     required this.onDelete,
     required this.onSetPrimary,
@@ -308,145 +285,97 @@ class _MasonryGlassCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final accent = const Color(0xFF009A75);
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(18),
-      child: Stack(
-        children: [
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Colors.white.withOpacity(0.60),
-                  Colors.white.withOpacity(0.25),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
+    return GestureDetector(
+      onTap: () async {
+        final result = await Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => AddBankAccount(existing: bank)),
+        );
+
+        if (!context.mounted) return;
+
+        if (result is BankAccountModel) onEdit(result);
+        if (result == "primary") onSetPrimary();
+        if (result == "delete") onDelete();
+      },
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(18),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+          child: Container(
+            padding: const EdgeInsets.all(18),
+            color: Colors.white,
+            child: _content(accent),
           ),
-
-          GestureDetector(
-            onTap: () async {
-              final result = await Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => AddBankAccount(existing: bank),
-                ),
-              );
-
-              if (!context.mounted) return; // safety
-
-              if (result is BankAccountModel) {
-                onEdit(result); // ← update edited bank
-              } else if (result == "primary") {
-                onSetPrimary(); // ← set it as primary
-              } else if (result == "delete") {
-                onDelete(); // ← NEW
-              }
-            },
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-              child: _buildCardContent(accent),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _buildCardContent(Color accent) {
-    String safeLast4(String number) {
-      if (number.length <= 4) return number;
-      return number.substring(number.length - 4);
-    }
+  Widget _content(Color accent) {
+    String safeLast4(String number) =>
+        number.length <= 4 ? number : number.substring(number.length - 4);
 
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.white.withOpacity(0.25)),
-        gradient: LinearGradient(
-          colors: [
-            Colors.white.withOpacity(0.55),
-            Colors.white.withOpacity(0.25),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              _circleAvatar(bank.bankName, accent),
-              const SizedBox(width: 14),
-
-              Expanded(
-                child: Text(
-                  "${bank.bankName} •••• ${safeLast4(bank.accountNumber)}",
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 16),
-
-          Text(
-            "Account Holder",
-            style: TextStyle(
-              color: Colors.black.withOpacity(0.55),
-              fontWeight: FontWeight.w600,
-              fontSize: 13,
-            ),
-          ),
-
-          const SizedBox(height: 4),
-
-          Text(
-            bank.accountHolder,
-            style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w900),
-          ),
-
-          const SizedBox(height: 12),
-
-          if (bank.isPrimary)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: const Color(0xFF009A75).withOpacity(0.3),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: const Text(
-                "PRIMARY ACCOUNT",
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            _circle(accent),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Text(
+                "${bank.bankName} •••• ${safeLast4(bank.accountNumber)}",
                 style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
+                  fontSize: cardTitleSize,
                   fontWeight: FontWeight.w900,
                 ),
               ),
             ),
-        ],
-      ),
+          ],
+        ),
+        const SizedBox(height: 14),
+        Text(
+          "Account Holder",
+          style: TextStyle(
+            color: Colors.black.withOpacity(0.55),
+            fontWeight: FontWeight.w600,
+            fontSize: 12.5,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          bank.accountHolder,
+          style: TextStyle(
+            fontSize: cardHolderSize,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(height: 12),
+        if (bank.isPrimary)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: accent.withOpacity(0.35),
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: const Text(
+              "PRIMARY ACCOUNT",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+      ],
     );
   }
 
-  Widget _circleAvatar(String name, Color accent) {
+  Widget _circle(Color accent) {
     return Container(
-      width: 58,
-      height: 58,
+      width: 56,
+      height: 56,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         gradient: LinearGradient(

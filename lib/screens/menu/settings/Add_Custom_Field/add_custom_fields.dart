@@ -36,7 +36,7 @@ class _AddCustomFieldsState extends State<AddCustomFields> {
             CustomElevatedButton(
               label: "Add Field",
               icon: Icons.add_circle_outline,
-              color: Color(0xFF009A75),
+              backgroundColor: Color(0xFF009A75),
               onPressed: () {
                 final newField = titleController.text.trim();
                 if (newField.isEmpty) return;
