@@ -27,10 +27,10 @@ class InvoiceModel {
   String? notes;
   String? terms;
   String status;
-
   String? currencyCode;
   String? currencySymbol;
   String? currencyName;
+  bool hasRated;
 
   InvoiceModel({
     this.invoiceID,
@@ -59,10 +59,10 @@ class InvoiceModel {
     this.notes,
     this.terms,
     required this.status,
-
     this.currencyCode,
     this.currencySymbol,
     this.currencyName,
+    this.hasRated = false,
   });
 
   factory InvoiceModel.fromJson(Map<String, dynamic> json) {
@@ -96,6 +96,7 @@ class InvoiceModel {
       currencyCode: json['currencyCode'],
       currencySymbol: json['currencySymbol'],
       currencyName: json['currencyName'],
+      hasRated: json['hasRated'] ?? false,
     );
   }
 
@@ -129,6 +130,7 @@ class InvoiceModel {
     'currencyCode': currencyCode,
     'currencySymbol': currencySymbol,
     'currencyName': currencyName,
+    'hasRated': hasRated,
   };
 
   /// ✅ Add this method
@@ -162,6 +164,7 @@ class InvoiceModel {
     String? currencyCode,
     String? currencySymbol,
     String? currencyName,
+    bool? hasRated,
   }) {
     return InvoiceModel(
       invoiceID: invoiceID ?? this.invoiceID,
@@ -193,6 +196,7 @@ class InvoiceModel {
       currencyCode: currencyCode ?? this.currencyCode,
       currencySymbol: currencySymbol ?? this.currencySymbol,
       currencyName: currencyName ?? this.currencyName,
+      hasRated: hasRated ?? this.hasRated,
     );
   }
 }

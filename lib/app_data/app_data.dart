@@ -21,6 +21,16 @@ class AppData {
   SettingsModel settings = SettingsModel();
   List<BankAccountModel> bankAccounts = [];
 
+  bool get userHasRated {
+    return invoices.any((invoice) => invoice.hasRated == true);
+  }
+
+  void markUserRated() {
+    if (invoices.isNotEmpty) {
+      invoices.last.hasRated = true;
+    }
+  }
+
   // ✅ Default labels
   static Map<String, String> itemTitles = {
     'descLabel': 'Product',

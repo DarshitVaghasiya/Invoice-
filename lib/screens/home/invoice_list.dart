@@ -13,6 +13,7 @@ import 'package:invoice/pdf_templates/4_elegant.dart';
 import 'package:invoice/pdf_templates/5_attractive.dart';
 import 'package:invoice/pdf_templates/6_beautiful.dart';
 import 'package:invoice/screens/forms/invoice_form.dart';
+import 'package:invoice/screens/home/rate_us_dialog.dart';
 import 'package:invoice/widgets/buttons/custom_dialog.dart';
 import 'package:invoice/widgets/buttons/custom_iconbutton.dart';
 import 'package:invoice/widgets/layout/drawer.dart';
@@ -159,17 +160,36 @@ class _InvoiceListPageState extends State<InvoiceListPage> {
   }
 
   Future<void> _createNewInvoice() async {
-    if (!isPurchase && invoices.length >= 10) {
-      showLimitDialog("You can create only 10 invoices in Free plan.\nUpgrade to create unlimited invoices.");
-      return; // Stop further execution
+    bool hasRated = AppData().userHasRated;
+
+    // Show rating popup after 3 invoices AND only if user has not rated
+    if (invoices.length >= 3 && !hasRated) {
+      await showRateUsDialog(context, (rating) {
+        print("User rating: $rating");
+
+        if (rating > 0) {
+          AppData().markUserRated();   // save inside InvoiceModel
+        }
+      });
     }
 
+    // Restrict free plan
+    if (!isPurchase && invoices.length >= 10) {
+      showLimitDialog(
+        "You can create only 10 invoices in Free plan.\nUpgrade to create unlimited invoices.",
+      );
+      return;
+    }
+
+    // Open new invoice page
     final newInvoice = await Navigator.push<InvoiceModel>(
       context,
       MaterialPageRoute(builder: (context) => const InvoiceFormPage()),
     );
+
     if (newInvoice != null) _loadData();
   }
+
 
   Future<void> _editInvoice(InvoiceModel invoice) async {
     final index = invoices.indexOf(invoice);
@@ -414,26 +434,14 @@ class _InvoiceListPageState extends State<InvoiceListPage> {
                     itemCount: filteredInvoices.length,
                     itemBuilder: (context, index) {
                       final invoice = filteredInvoices[index];
-                      final customer = customers.firstWhere(
-                        (c) => c.id == invoice.customerId,
-                        orElse: () => CustomerModel(
-                          id: '',
-                          name: 'Unknown Client',
-                          email: '',
-                          phone: '',
-                          company: invoice.billTo,
-                          panCard: '',
-                          gst: '',
-                          street: '',
-                          city: '',
-                          state: '',
-                          country: '',
-                        ),
-                      );
+                      final companyName = invoice.billTo
+                          .trim()
+                          .split('\n')
+                          .first;
                       return buildInvoiceCard(
                         context,
                         invoice,
-                        customer,
+                        companyName,
                         AppData().profile,
                       );
                     },
@@ -462,7 +470,7 @@ class _InvoiceListPageState extends State<InvoiceListPage> {
   Widget buildInvoiceCard(
     BuildContext context,
     InvoiceModel invoice,
-    CustomerModel customer,
+    String companyName,
     ProfileModel? profile,
   ) {
     final bool isPaid = invoice.status == 'paid';
@@ -607,9 +615,7 @@ class _InvoiceListPageState extends State<InvoiceListPage> {
                     SizedBox(
                       width: textWidth,
                       child: Text(
-                        customer.company.isNotEmpty
-                            ? customer.company
-                            : customer.name,
+                        companyName,
                         style: TextStyle(
                           fontWeight: FontWeight.w700,
                           fontSize: Responsive.scale(context, 14),

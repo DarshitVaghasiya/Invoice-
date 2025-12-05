@@ -5,7 +5,6 @@ import 'package:invoice/app_data/app_data.dart';
 import 'package:invoice/models/customer_model.dart';
 import 'package:invoice/models/invoice_model.dart';
 import 'package:invoice/models/item_model.dart';
-import 'package:invoice/screens/menu/settings/Add_Custom_Field/add_custom_fields.dart';
 import 'package:invoice/utils/device_utils.dart';
 import 'package:invoice/widgets/buttons/custom_elevatedbutton.dart';
 import 'package:invoice/widgets/buttons/custom_iconbutton.dart';
@@ -262,7 +261,18 @@ class _InvoiceFormPageState extends State<InvoiceFormPage> {
   }
 
   Future<void> _saveInvoice() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            "Please fill all required details before saving the invoice.",
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
     final invoiceID = widget.existingInvoice != null
         ? widget.existingInvoice!['invoiceID']
         : "${deviceID}_${DateTime.now().millisecondsSinceEpoch}";

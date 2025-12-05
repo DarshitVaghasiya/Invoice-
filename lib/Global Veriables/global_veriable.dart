@@ -1,7 +1,7 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:invoice/screens/menu/Upgrade Plan/upgrade_plan.dart';
+import 'package:invoice/screens/menu/upgrade_plan/upgrade_plan.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 // 🔹 Global variables

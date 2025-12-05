@@ -6,7 +6,8 @@ import 'package:invoice/Screens/Menu/Items/items_list.dart';
 import 'package:invoice/Screens/Menu/Profile/profile_form.dart';
 import 'package:invoice/Screens/Menu/Settings/settings.dart';
 import 'package:invoice/app_data/app_data.dart';
-import 'package:invoice/screens/menu/Upgrade%20Plan/upgrade_plan.dart';
+import 'package:invoice/screens/menu/reports/reports_list.dart';
+import 'package:invoice/screens/menu/upgrade_plan/upgrade_plan.dart';
 
 class AppDrawer extends StatefulWidget {
   const AppDrawer({super.key});
@@ -36,7 +37,6 @@ class _AppDrawerState extends State<AppDrawer> {
       imagePath = null;
     }
   }
-
 
   Future<void> loadProfileData() async {
     final profile = AppData().profile;
@@ -68,14 +68,7 @@ class _AppDrawerState extends State<AppDrawer> {
 
   @override
   Widget build(BuildContext context) {
-    double screenWidth = MediaQuery
-        .of(context)
-        .size
-        .width;
-    double drawerWidth = screenWidth < 600 ? screenWidth * 0.85 : 350;
-
     return SizedBox(
-      width: drawerWidth,
       child: Drawer(
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.only(
@@ -91,28 +84,35 @@ class _AppDrawerState extends State<AppDrawer> {
               accountName: Text(
                 name ?? "Loading...",
                 style: const TextStyle(
-                    fontSize: 18, fontWeight: FontWeight.bold),
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               accountEmail: Text(email ?? ""),
               currentAccountPicture: CircleAvatar(
                 backgroundColor: Colors.white,
                 backgroundImage: (imagePath != null && imagePath!.isNotEmpty)
                     ? MemoryImage(
-                    base64Decode(imagePath!)) // ✅ Decode Base64 string
+                        base64Decode(imagePath!),
+                      ) // ✅ Decode Base64 string
                     : null,
                 child: (imagePath == null || imagePath!.isEmpty)
                     ? const Icon(
-                    Icons.person, size: 40, color: Color(0xFF00A884))
+                        Icons.person,
+                        size: 40,
+                        color: Color(0xFF00A884),
+                      )
                     : null,
               ),
-
             ),
 
             // Upgrade Plan
-            if(!isPurchase)
+            if (!isPurchase)
               ListTile(
                 leading: const Icon(
-                    Icons.arrow_circle_up, color: Color(0xFFFF1744)),
+                  Icons.arrow_circle_up,
+                  color: Color(0xFFFF1744),
+                ),
                 title: const Text(
                   "Upgrade",
                   style: TextStyle(fontWeight: FontWeight.bold),
@@ -121,9 +121,7 @@ class _AppDrawerState extends State<AppDrawer> {
                   Navigator.pop(context);
                   await Navigator.push(
                     context,
-                    MaterialPageRoute(
-                      builder: (context) => const PlanPage(),
-                    ),
+                    MaterialPageRoute(builder: (context) => const PlanPage()),
                   );
                   await loadProfileData(); // refresh after profile change
                 },
@@ -132,7 +130,9 @@ class _AppDrawerState extends State<AppDrawer> {
             // Profile
             ListTile(
               leading: const Icon(
-                  Icons.person_outline, color: Color(0xFF00A884)),
+                Icons.person_outline,
+                color: Color(0xFF00A884),
+              ),
               title: const Text(
                 "Profile",
                 style: TextStyle(fontWeight: FontWeight.bold),
@@ -193,7 +193,24 @@ class _AppDrawerState extends State<AppDrawer> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                      builder: (context) => const SettingsScreen()),
+                    builder: (context) => const SettingsScreen(),
+                  ),
+                );
+              },
+            ),
+
+            //Reports
+            ListTile(
+              leading: const Icon(Icons.report, color: Colors.orangeAccent),
+              title: const Text(
+                "Reports",
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const ReportsList()),
                 );
               },
             ),
@@ -202,4 +219,4 @@ class _AppDrawerState extends State<AppDrawer> {
       ),
     );
   }
-  }
+}
