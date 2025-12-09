@@ -303,8 +303,8 @@ class _InvoiceProfileFormState extends State<InvoiceProfileForm> {
         final isMobile = constraints.maxWidth < 600;
         final isTablet =
             constraints.maxWidth >= 600 && constraints.maxWidth < 1000;
-        final crossAxisCount = isMobile ? 1 : (isTablet ? 2 : 3);
-        final spacing = isMobile ? 10.0 : 18.0;
+        final crossAxisCount = isMobile ? 1 : 2;
+        final crossAxisSpacing = isMobile ? 10.0 : 10.0;
         final double titleFontSize = isMobile ? 24 : (isTablet ? 28 : 32);
 
         return Scaffold(
@@ -325,16 +325,12 @@ class _InvoiceProfileFormState extends State<InvoiceProfileForm> {
             actions: [
               if (!isMobile)
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                  padding: const EdgeInsets.only(right: 20),
                   child: CustomIconButton(
                     icon: isEditing ? Icons.save : Icons.edit,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 15,
-                    ),
+                    padding: EdgeInsets.symmetric(horizontal: 30, vertical: 12),
                     label: isEditing ? "Save" : "Edit",
-                    fontSize: 22,
-                    iconSize: 30,
+                    fontSize: 20,
                     textColor: Colors.white,
                     backgroundColor: isEditing
                         ? const Color(0xFF009A75)
@@ -353,7 +349,7 @@ class _InvoiceProfileFormState extends State<InvoiceProfileForm> {
           ),
           body: Center(
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1100),
+              constraints: const BoxConstraints(maxWidth: 850),
               child: SingleChildScrollView(
                 padding: EdgeInsets.symmetric(
                   horizontal: isMobile ? 16 : 32,
@@ -367,7 +363,7 @@ class _InvoiceProfileFormState extends State<InvoiceProfileForm> {
                         "Organization Image",
                         [],
                         crossAxisCount,
-                        spacing,
+                        crossAxisSpacing,
                       ),
                       _buildSection(
                         "Contact Info",
@@ -395,7 +391,7 @@ class _InvoiceProfileFormState extends State<InvoiceProfileForm> {
                           ),
                         ],
                         crossAxisCount,
-                        spacing,
+                        crossAxisSpacing,
                       ),
                       _buildSection(
                         "Address Info",
@@ -422,7 +418,7 @@ class _InvoiceProfileFormState extends State<InvoiceProfileForm> {
                           ),
                         ],
                         crossAxisCount,
-                        spacing,
+                        crossAxisSpacing,
                       ),
                       _buildSection(
                         "Tax Info",
@@ -439,7 +435,7 @@ class _InvoiceProfileFormState extends State<InvoiceProfileForm> {
                           ),
                         ],
                         crossAxisCount,
-                        spacing,
+                        crossAxisSpacing,
                       ),
                       _buildSection(
                         "Payment Info",
@@ -471,7 +467,7 @@ class _InvoiceProfileFormState extends State<InvoiceProfileForm> {
                           ),
                         ],
                         crossAxisCount,
-                        spacing,
+                        crossAxisSpacing,
                       ),
                     ],
                   ),
@@ -528,7 +524,7 @@ class _InvoiceProfileFormState extends State<InvoiceProfileForm> {
     String title,
     List<Widget> children,
     int crossAxisCount,
-    double spacing,
+    double crossAxisSpacing,
   ) {
     bool isOrgImageSection = title == "Organization Image";
     return Center(
@@ -548,7 +544,7 @@ class _InvoiceProfileFormState extends State<InvoiceProfileForm> {
             ],
           ),
           margin: const EdgeInsets.only(bottom: 18),
-          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 20),
+          padding: const EdgeInsets.fromLTRB(22,20,22,10),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -570,8 +566,8 @@ class _InvoiceProfileFormState extends State<InvoiceProfileForm> {
                         alignment: Alignment.center,
                         children: [
                           Container(
-                            width: 60,
-                            height: 60,
+                            width: 70,
+                            height: 70,
                             decoration: const BoxDecoration(
                               shape: BoxShape.circle,
                               gradient: LinearGradient(
@@ -635,7 +631,11 @@ class _InvoiceProfileFormState extends State<InvoiceProfileForm> {
               ),
               if (children.isNotEmpty) const SizedBox(height: 14),
               if (children.isNotEmpty)
-                _buildResponsiveGrid(children, crossAxisCount, spacing),
+                _buildResponsiveGrid(
+                  children,
+                  crossAxisCount,
+                  crossAxisSpacing,
+                ),
             ],
           ),
         ),
@@ -646,20 +646,16 @@ class _InvoiceProfileFormState extends State<InvoiceProfileForm> {
   Widget _buildResponsiveGrid(
     List<Widget> children,
     int crossAxisCount,
-    double spacing,
+    double crossAxisSpacing,
   ) {
-    final double itemWidth =
-        (MediaQuery.of(context).size.width -
-            (crossAxisCount + 1) * spacing * 2) /
-        crossAxisCount;
-    return Wrap(
-      spacing: spacing,
-      runSpacing: spacing,
-      children: children
-          .map(
-            (child) => SizedBox(width: itemWidth.clamp(260, 380), child: child),
-          )
-          .toList(),
+    return GridView.count(
+      crossAxisCount: crossAxisCount,
+      crossAxisSpacing: crossAxisSpacing,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      childAspectRatio: 5,
+      // Width–height ratio beautiful lagse
+      children: children,
     );
   }
 }

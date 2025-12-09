@@ -28,7 +28,6 @@ class _EditTitleState extends State<EditTitle> {
   Future<void> _initializeControllers() async {
     final settings = AppData().settings;
 
-    // Default labels if empty
     descController = TextEditingController(
       text: settings.descTitle.isNotEmpty ? settings.descTitle : "Product",
     );
@@ -41,19 +40,29 @@ class _EditTitleState extends State<EditTitle> {
       text: settings.rateTitle.isNotEmpty ? settings.rateTitle : "Price",
     );
 
-    // 🔥 Load custom fields from settings
-    for (var field in settings.customFields) {
-      customFieldControllers[field] = TextEditingController(
-        text: field,
-      ); // default = field name itself
+    // Load custom fields
+    for (int i = 0; i < settings.customFields.length; i++) {
+      String id = "field_${i + 1}";
+      customFieldControllers[id] = TextEditingController(
+        text: settings.customFields[i],
+      );
     }
   }
 
   void addCustomField() {
     setState(() {
-      String newFieldName = "Field ${customFieldControllers.length + 1}";
-      customFieldControllers[newFieldName] = TextEditingController(
-        text: newFieldName,
+      int highest = 0;
+
+      for (var key in customFieldControllers.keys) {
+        final number = int.tryParse(key.split("_").last) ?? 0;
+        if (number > highest) highest = number;
+      }
+
+      int newId = highest + 1;
+      String uniqueKey = "field_$newId";
+
+      customFieldControllers[uniqueKey] = TextEditingController(
+        text: "Field $newId",
       );
     });
   }
@@ -70,7 +79,7 @@ class _EditTitleState extends State<EditTitle> {
 
     // 🔥 Update custom field names inside model
     List<String> updatedCustomFields = customFieldControllers.values
-        .map((controller) => controller.text)
+        .map((c) => c.text)
         .toList();
 
     AppData().settings = AppData().settings.copyWith(
@@ -122,7 +131,7 @@ class _EditTitleState extends State<EditTitle> {
               },
               child: textFormField(
                 controller: entry.value,
-                labelText: "Custom Field: $keyName",
+                labelText: "Custom Field",
               ),
             );
           }),
@@ -144,21 +153,7 @@ class _EditTitleState extends State<EditTitle> {
             centerTitle: true,
             scrolledUnderElevation: 0,
             actions: [
-              isMobile
-                  ? Padding(
-                      padding: EdgeInsets.only(right: 20),
-                      child: CustomIconButton(
-                        icon: Icons.add,
-                        textColor: Colors.white,
-                        backgroundColor: Color(0xFF009A75),
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 10,
-                        ),
-                        onTap: addCustomField,
-                      ),
-                    )
-                  : !isTablet
+              !isMobile
                   ? Row(
                       children: [
                         CustomIconButton(
@@ -185,26 +180,21 @@ class _EditTitleState extends State<EditTitle> {
                             });
                           },
                         ),
-
                         SizedBox(width: 20),
-
-                        Padding(
-                          padding: EdgeInsets.only(right: 20),
-                          child: CustomIconButton(
-                            icon: Icons.add,
-                            textColor: Colors.white,
-                            backgroundColor: Color(0xFF009A75),
-                            iconSize: 25,
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 15,
-                              vertical: 15,
-                            ),
-                            onTap: addCustomField,
-                          ),
-                        ),
                       ],
                     )
                   : SizedBox(),
+              Padding(
+                padding: EdgeInsets.only(right: 20),
+                child: CustomIconButton(
+                  icon: Icons.add,
+                  textColor: Colors.white,
+                  backgroundColor: Color(0xFF009A75),
+                  iconSize: isMobile ? 20 : 25,
+                  padding: EdgeInsets.symmetric(horizontal: 15, vertical: 15),
+                  onTap: addCustomField,
+                ),
+              ),
             ],
           ),
 
@@ -213,41 +203,39 @@ class _EditTitleState extends State<EditTitle> {
             child: Center(
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 825),
-                child: Column(
-                  children: [
-                    GridView.count(
-                      physics: const NeverScrollableScrollPhysics(),
-                      shrinkWrap: true,
-                      crossAxisCount: crossAxisCount,
-                      crossAxisSpacing: spacing,
-                      mainAxisSpacing: spacing,
-                      childAspectRatio: isMobile ? 7 : (isTablet ? 5.5 : 4.5),
-                      children: allFields,
-                    ),
-                    const SizedBox(height: 24),
-                    if (isMobile)
-                      CustomElevatedButton(
-                        icon: Icons.save_rounded,
-                        label: "Save All Titles",
-                        backgroundColor: const Color(0xFF009A75),
-                        onPressed: () async {
-                          await _saveTitles();
-                          Navigator.pop(context, {
-                            'descLabel': descController!.text,
-                            'qtyLabel': qtyController!.text,
-                            'rateLabel': rateController!.text,
-                            'customLabels': customFieldControllers.map(
-                              (key, controller) =>
-                                  MapEntry(key, controller.text),
-                            ),
-                          });
-                        },
-                      ),
-                  ],
+                child: GridView.count(
+                  physics: const NeverScrollableScrollPhysics(),
+                  shrinkWrap: true,
+                  crossAxisCount: crossAxisCount,
+                  crossAxisSpacing: spacing,
+                  mainAxisSpacing: spacing,
+                  childAspectRatio: isMobile ? 6 : (isTablet ? 6.5 : 4),
+                  children: allFields,
                 ),
               ),
             ),
           ),
+          bottomNavigationBar: isMobile
+              ? Container(
+                  padding: const EdgeInsets.fromLTRB(26, 12, 26, 26),
+                  child: CustomElevatedButton(
+                    label: "Save All Titles",
+                    icon: Icons.save_rounded,
+                    backgroundColor: const Color(0xFF009A75),
+                    onPressed: () async {
+                      await _saveTitles();
+                      Navigator.pop(context, {
+                        'descLabel': descController!.text,
+                        'qtyLabel': qtyController!.text,
+                        'rateLabel': rateController!.text,
+                        'customLabels': customFieldControllers.map(
+                          (key, controller) => MapEntry(key, controller.text),
+                        ),
+                      });
+                    },
+                  ),
+                )
+              : null,
         );
       },
     );

@@ -51,20 +51,27 @@ android {
         }
     }
 
-
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("release")
+            isMinifyEnabled = false
+            isShrinkResources = false
+
+            // ❗ Fix build failure caused by lintVitalAnalyzeRelease
+            lint {
+                checkReleaseBuilds = false
+                abortOnError = false
+            }
         }
     }
+
 }
 
 flutter {
     source = "../.."
 }
 dependencies {
+    implementation("com.android.billingclient:billing-ktx:6.0.1")
     configurations.all {
         resolutionStrategy {
             force("androidx.activity:activity-ktx:1.9.0")

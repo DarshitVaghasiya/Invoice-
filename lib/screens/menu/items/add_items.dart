@@ -44,7 +44,6 @@ class _AddItemsState extends State<AddItems> {
     }
   }
 
-
   void saveItem() {
     if (_formKey.currentState!.validate()) {
       final newItem = AddItemModel(
@@ -52,7 +51,6 @@ class _AddItemsState extends State<AddItems> {
         title: title.text.trim(),
         details: details.text.trim(),
         price: int.tryParse(price.text) ?? 0,
-
       );
 
       // ✅ Save or update in AppData
@@ -94,19 +92,19 @@ class _AddItemsState extends State<AddItems> {
             actions: [
               if (!isMobile)
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                  padding: const EdgeInsets.only(right: 20),
                   child: CustomIconButton(
                     icon: isEditing ? Icons.save : Icons.edit,
                     label: isEditing ? "Save" : "Edit",
                     textColor: Colors.white,
+                    fontSize: 20,
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
+                      horizontal: 30,
                       vertical: 12,
                     ),
                     backgroundColor: isEditing
                         ? const Color(0xFF009A75)
                         : Colors.yellow.shade800,
-                    borderRadius: BorderRadius.circular(15),
                     onTap: () {
                       if (isEditing) saveItem();
                       setState(() => isEditing = !isEditing);
@@ -226,9 +224,8 @@ class _AddItemsState extends State<AddItems> {
         ],
       ),
       margin: const EdgeInsets.only(bottom: 16),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
+      padding: EdgeInsets.fromLTRB(25, 25, 25, 35),
+      child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
@@ -243,8 +240,7 @@ class _AddItemsState extends State<AddItems> {
             _buildResponsiveGrid(children, crossAxisCount, spacing),
           ],
         ),
-      ),
-    );
+      );
   }
 
   Widget _buildResponsiveGrid(

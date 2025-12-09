@@ -7,6 +7,7 @@ import 'package:invoice/Screens/Menu/Profile/profile_form.dart';
 import 'package:invoice/Screens/Menu/Settings/settings.dart';
 import 'package:invoice/app_data/app_data.dart';
 import 'package:invoice/screens/menu/reports/reports_list.dart';
+import 'package:invoice/screens/menu/support/support.dart';
 import 'package:invoice/screens/menu/upgrade_plan/upgrade_plan.dart';
 
 class AppDrawer extends StatefulWidget {
@@ -201,7 +202,7 @@ class _AppDrawerState extends State<AppDrawer> {
 
             //Reports
             ListTile(
-              leading: const Icon(Icons.report, color: Colors.orangeAccent),
+              leading: const Icon(Icons.report_gmailerrorred, color: Colors.orange),
               title: const Text(
                 "Reports",
                 style: TextStyle(fontWeight: FontWeight.bold),
@@ -211,6 +212,22 @@ class _AppDrawerState extends State<AppDrawer> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => const ReportsList()),
+                );
+              },
+            ),
+
+            //Support
+            ListTile(
+              leading: const Icon(Icons.contact_support_outlined, color: Colors.green),
+              title: const Text(
+                "Support",
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const Support()),
                 );
               },
             ),

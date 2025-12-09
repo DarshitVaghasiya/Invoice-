@@ -5,7 +5,7 @@ Future<bool?> showCustomAlertDialog({
   required BuildContext context,
   required String title,
   required String message,
-  IconData icon = Icons.warning_amber_rounded,
+  IconData? icon = Icons.warning_amber_rounded,
   Color iconColor = Colors.red,
   String btn3 = 'button 3',
   String btn2 = 'button 2',
@@ -51,7 +51,7 @@ Future<bool?> showCustomAlertDialog({
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Icon(icon, color: iconColor, size: 32),
+                      Icon(icon!, color: iconColor, size: 32),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(

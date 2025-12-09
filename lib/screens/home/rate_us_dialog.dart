@@ -1,27 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:invoice/widgets/buttons/custom_iconbutton.dart';
 import 'package:smooth_star_rating_null_safety/smooth_star_rating_null_safety.dart';
+import 'package:in_app_review/in_app_review.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 Future<void> showRateUsDialog(
-  BuildContext context,
-  Function(double rating) onSubmit,
-) async {
+    BuildContext context,
+    Function(double rating) onSubmit,
+    ) async {
+  final BuildContext parentContext = context; // store root screen context
   double selectedRating = 0;
 
   await showGeneralDialog(
     context: context,
     barrierDismissible: true,
     barrierLabel: "Dismiss",
-    // 🔥 REQUIRED
     transitionDuration: const Duration(milliseconds: 350),
-    pageBuilder: (_, __, ___) => const SizedBox.shrink(),
+    pageBuilder: (_, _, _) => const SizedBox.shrink(),
     transitionBuilder: (context, anim1, anim2, child) {
       return Transform.scale(
         scale: anim1.value,
         child: Opacity(
           opacity: anim1.value,
           child: StatefulBuilder(
-            builder: (context, setState) {
+            builder: (dialogContext, setState) {
               return Dialog(
                 backgroundColor: Colors.transparent,
                 insetPadding: const EdgeInsets.symmetric(horizontal: 28),
@@ -64,10 +66,10 @@ Future<void> showRateUsDialog(
                           selectedRating == 0
                               ? "🙂"
                               : (selectedRating <= 2
-                                    ? "😕"
-                                    : selectedRating == 3
-                                    ? "😊"
-                                    : "🤩"),
+                              ? "😕"
+                              : selectedRating == 3
+                              ? "😊"
+                              : "🤩"),
                           key: ValueKey(selectedRating),
                           style: const TextStyle(fontSize: 46),
                         ),
@@ -82,8 +84,19 @@ Future<void> showRateUsDialog(
                         ),
                         textAlign: TextAlign.center,
                       ),
+                      const SizedBox(height: 6),
 
-                      const SizedBox(height: 20),
+                      if (selectedRating > 0)
+                        Text(
+                          "You rated: ${selectedRating.toInt()} ★",
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey.shade800,
+                          ),
+                        ),
+
+                      const SizedBox(height: 18),
 
                       SmoothStarRating(
                         allowHalfRating: false,
@@ -113,9 +126,34 @@ Future<void> showRateUsDialog(
                         child: CustomIconButton(
                           label: "Submit Rating",
                           textColor: Colors.white,
-                          onTap: () {
+                          onTap: () async {
                             onSubmit(selectedRating);
-                            Navigator.pop(context);
+                            Navigator.pop(dialogContext); // close dialog
+
+                            await Future.delayed(const Duration(milliseconds: 400));
+
+                            if (selectedRating >= 4) {
+                              // directly open Play Store review page
+                              try {
+                                await launchUrl(
+                                  Uri.parse("market://details?id=com.easyinvoicegenerator"),
+                                  mode: LaunchMode.externalApplication,
+                                );
+                              } catch (_) {
+                                await launchUrl(
+                                  Uri.parse("https://play.google.com/store/apps/details?id=com.easyinvoicegenerator"),
+                                  mode: LaunchMode.externalApplication,
+                                );
+                              }
+                            } else {
+                              ScaffoldMessenger.of(parentContext).showSnackBar(
+                                const SnackBar(
+                                  content: Text("Thanks for your feedback 🙏"),
+                                  duration: Duration(seconds: 2),
+                                ),
+                              );
+                            }
+
                           },
                         ),
                       ),
@@ -125,7 +163,7 @@ Future<void> showRateUsDialog(
                       CustomIconButton(
                         label: "Maybe Later",
                         textColor: Colors.black54,
-                        onTap: () => Navigator.pop(context),
+                        onTap: () => Navigator.pop(dialogContext),
                       ),
                     ],
                   ),

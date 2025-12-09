@@ -119,19 +119,16 @@ class _CustomerFormState extends State<CustomerForm> {
             actions: [
               if (!isMobile)
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                  padding: const EdgeInsets.only(right: 20),
                   child: CustomIconButton(
                     icon: isEditing ? Icons.save : Icons.edit,
                     label: isEditing ? "Save" : "Edit",
                     textColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 12,
-                    ),
+                    fontSize: 20,
+                    padding: EdgeInsets.symmetric(horizontal: 30, vertical: 12),
                     backgroundColor: isEditing
                         ? const Color(0xFF009A75)
                         : Colors.yellow.shade800,
-                    borderRadius: BorderRadius.circular(15),
                     onTap: () {
                       if (isEditing) {
                         _saveCustomer();
@@ -153,7 +150,7 @@ class _CustomerFormState extends State<CustomerForm> {
               key: _formKey,
               child: Center(
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 1000),
+                  constraints: const BoxConstraints(maxWidth: 850),
                   child: Column(
                     children: [
                       _buildSection(

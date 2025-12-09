@@ -1,4 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:invoice/Global Veriables/global_veriable.dart';
 import 'package:invoice/widgets/buttons/custom_elevatedbutton.dart';
 import 'package:invoice/widgets/buttons/custom_iconbutton.dart';
@@ -12,30 +16,109 @@ class PlanPage extends StatefulWidget {
 }
 
 class _PlanPageState extends State<PlanPage> {
-  Future<void> _proceed() async {
-    isPurchase = true;
-    final prefs = await SharedPreferences.getInstance();
-    prefs.setBool("isPurchase", true);
+  final InAppPurchase _inAppPurchase = InAppPurchase.instance;
+  final String _productId = 'invoice_premium_lifetime';
+  late bool available;
+  List<ProductDetails> products = [];
+  bool isPurchased = false;
+  late StreamSubscription<List<PurchaseDetails>> _subscription;
 
+  @override
+  void initState() {
+    super.initState();
+    _initializePurchase();
+
+    _subscription = _inAppPurchase.purchaseStream.listen(
+      (purchaseList) {
+        _handlePurchase(purchaseList);
+      },
+      onDone: () => _subscription.cancel(),
+      onError: (error) {
+        debugPrint("Purchase Stream Error: $error");
+      },
+    );
+  }
+
+  Future<void> _initializePurchase() async {
+    available = await _inAppPurchase.isAvailable();
+    if (!available) return;
+
+    final ProductDetailsResponse response = await _inAppPurchase
+        .queryProductDetails({_productId});
+    products = response.productDetails;
+  }
+
+  Future<void> _proceed() async {
+    if (products.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Product not available. Please try again later."),
+        ),
+      );
+      return;
+    }
+
+    // Loader popup
+    if (!mounted) return;
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const Center(
+      builder: (_) => const Center(
         child: CircularProgressIndicator(color: Color(0xFF0072FF)),
       ),
     );
 
-    await Future.delayed(const Duration(seconds: 2));
-    Navigator.pop(context);
+    final PurchaseParam purchaseParam = PurchaseParam(
+      productDetails: products.first,
+    );
+    _inAppPurchase.buyNonConsumable(purchaseParam: purchaseParam);
+  }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _inAppPurchase.purchaseStream.listen((purchaseList) {
+      _handlePurchase(purchaseList);
+    });
+  }
+
+  void _handlePurchase(List<PurchaseDetails> purchaseList) async {
+    for (var purchase in purchaseList) {
+      if (purchase.status == PurchaseStatus.purchased) {
+        if (purchase.pendingCompletePurchase) {
+          await _inAppPurchase.completePurchase(purchase); // acknowledgement
+        }
+
+        SharedPreferences prefs = await SharedPreferences.getInstance();
+        prefs.setBool("isPurchase", true);
+        isPurchase = true;
+
+        if (!mounted) return;
+        Navigator.pop(context);
+        _successDialog();
+      } else if (purchase.status == PurchaseStatus.error) {
+        if (!mounted) return;
+        Navigator.pop(context);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Payment Failed")));
+      }
+    }
+  }
+
+  Future<void> restorePurchase() async {
+    await _inAppPurchase.restorePurchases();
+  }
+
+  void _successDialog() {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
         title: const Icon(
           Icons.check_circle,
-          color: Color(0xFF0072FF),
           size: 60,
+          color: Color(0xFF0072FF),
         ),
         content: const Text(
           "Payment Successful!\nPremium Lifetime Activated 🎉",
@@ -46,7 +129,7 @@ class _PlanPageState extends State<PlanPage> {
         actions: [
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF0072FF),
+              backgroundColor: Color(0xFF0072FF),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
@@ -66,6 +149,18 @@ class _PlanPageState extends State<PlanPage> {
   }
 
   @override
+  void dispose() {
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+    _subscription.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final Size size = MediaQuery.of(context).size;
     final double screenWidth = size.width;
@@ -75,28 +170,35 @@ class _PlanPageState extends State<PlanPage> {
     bool isTablet = screenWidth >= 600 && screenWidth < 1000;
 
     double horizontalPadding = screenWidth * 0.05; // 5% of width
+
+    double buttonFontSize = isMobile
+        ? screenWidth * 0.06
+        : isTablet
+        ? screenWidth * 0.015
+        : screenWidth * 0.03;
+
     double titleFontSize = isMobile
         ? screenWidth * 0.06
         : isTablet
-        ? screenWidth * 0.04
+        ? screenWidth * 0.025
         : screenWidth * 0.03;
 
     double subtitleFont = isMobile
         ? screenWidth * 0.05
         : isTablet
-        ? screenWidth * 0.03
+        ? screenWidth * 0.025
         : screenWidth * 0.02;
 
     double priceFont = isMobile
         ? screenWidth * 0.08
         : isTablet
-        ? screenWidth * 0.04
+        ? screenWidth * 0.03
         : screenWidth * 0.03;
 
     double featureFont = isMobile
         ? screenWidth * 0.045
         : isTablet
-        ? screenWidth * 0.03
+        ? screenWidth * 0.02
         : screenWidth * 0.02;
 
     return Scaffold(
@@ -122,8 +224,8 @@ class _PlanPageState extends State<PlanPage> {
                   padding: EdgeInsets.symmetric(horizontal: 25, vertical: 12),
                   borderColor: Colors.black,
                   textColor: Colors.black,
-                  fontSize: 28,
-                  onTap: () {},
+                  fontSize: buttonFontSize,
+                  onTap: restorePurchase,
                 ),
                 SizedBox(width: 10),
                 Padding(
@@ -133,7 +235,7 @@ class _PlanPageState extends State<PlanPage> {
                     padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                     backgroundColor: Colors.blueAccent,
                     textColor: Colors.white,
-                    fontSize: 28,
+                    fontSize: buttonFontSize,
                     onTap: _proceed,
                   ),
                 ),
@@ -237,7 +339,7 @@ class _PlanPageState extends State<PlanPage> {
                                     Row(
                                       children: [
                                         Text(
-                                          "₹ 499",
+                                          "₹ 500",
                                           style: TextStyle(
                                             fontSize: priceSize,
                                             fontWeight: FontWeight.w900,
@@ -403,7 +505,8 @@ class _PlanPageState extends State<PlanPage> {
                     constraints.maxHeight; // available height in bottom area
                 double screenH = MediaQuery.of(context).size.height;
 
-                bool isSmallScreen = h < 770; // below 700px mobile → small
+                bool isSmallScreen =
+                    screenH < 770; // below 700px mobile → small
 
                 double vertical = isSmallScreen ? 15 : 5;
                 double buttonPadding = isSmallScreen ? 12 : 15;
@@ -439,7 +542,7 @@ class _PlanPageState extends State<PlanPage> {
                           ),
                           backgroundColor: Colors.transparent,
                           textColor: Colors.black,
-                          onPressed: () {},
+                          onPressed: restorePurchase,
                         ),
                       ],
                     ),

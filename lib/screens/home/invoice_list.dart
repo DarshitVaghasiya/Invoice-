@@ -168,10 +168,10 @@ class _InvoiceListPageState extends State<InvoiceListPage> {
         print("User rating: $rating");
 
         if (rating > 0) {
-          AppData().markUserRated();   // save inside InvoiceModel
+          AppData().markUserRated(); // save inside InvoiceModel
         }
       });
-    }
+     }
 
     // Restrict free plan
     if (!isPurchase && invoices.length >= 10) {
@@ -189,7 +189,6 @@ class _InvoiceListPageState extends State<InvoiceListPage> {
 
     if (newInvoice != null) _loadData();
   }
-
 
   Future<void> _editInvoice(InvoiceModel invoice) async {
     final index = invoices.indexOf(invoice);

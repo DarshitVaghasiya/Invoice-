@@ -192,13 +192,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
     bool isTablet = screenWidth >= 600 && screenWidth < 1000;
 
     double horizontalPadding = screenWidth * 0.05; // 5% of width
-    double verticalPadding = screenWidth * 0.03; // 5% of width
+    double verticalPadding = screenWidth * 0.01; // 5% of width
     double spacing = screenHeight * 0.01; // 2% of height
 
     double titleFontSize = isMobile
         ? screenWidth * 0.06
         : isTablet
-        ? screenWidth * 0.04
+        ? screenWidth * 0.03
         : screenWidth * 0.03;
 
     int crossAxisCount = isMobile
