@@ -69,13 +69,12 @@ class PdfGenerators6 {
     final allAccounts = AppData().profile!.bankAccounts;
     if (allAccounts!.isNotEmpty) {
       bankAccount = allAccounts.firstWhere(
-            (acc) => acc.isPrimary == true,
+        (acc) => acc.isPrimary == true,
         orElse: () => allAccounts.first,
       );
     } else {
       bankAccount = null;
     }
-
 
     final settings = AppData().settings;
     final String currency = invoice.currencySymbol ?? '\$';
@@ -94,7 +93,10 @@ class PdfGenerators6 {
             return pw.SizedBox();
           }
           return pw.Container(
-            margin: const pw.EdgeInsets.symmetric(horizontal: -25, vertical: -20),
+            margin: const pw.EdgeInsets.symmetric(
+              horizontal: -25,
+              vertical: -20,
+            ),
             height: 100,
             child: pw.Stack(
               children: [
@@ -143,11 +145,17 @@ class PdfGenerators6 {
                       pw.SizedBox(height: 5),
                       pw.Text(
                         profile?.phone ?? '',
-                        style: pw.TextStyle(color: PdfColors.white, fontSize: 9),
+                        style: pw.TextStyle(
+                          color: PdfColors.white,
+                          fontSize: 9,
+                        ),
                       ),
                       pw.Text(
                         profile?.email ?? '',
-                        style: pw.TextStyle(color: PdfColors.white, fontSize: 9),
+                        style: pw.TextStyle(
+                          color: PdfColors.white,
+                          fontSize: 9,
+                        ),
                       ),
                     ],
                   ),
@@ -156,8 +164,6 @@ class PdfGenerators6 {
             ),
           );
         },
-
-
 
         build: (context) {
           final items = (invoice.items as List? ?? [])
@@ -262,7 +268,7 @@ class PdfGenerators6 {
                                 borderRadius: pw.BorderRadius.circular(6),
                               ),
                               child: pw.Text(
-                                "No Logo",
+                                " ",
                                 style: pw.TextStyle(
                                   fontSize: 9,
                                   fontWeight: pw.FontWeight.bold,
@@ -345,7 +351,7 @@ class PdfGenerators6 {
                   child: pw.Column(
                     crossAxisAlignment: pw.CrossAxisAlignment.start,
                     children: [
-                      if (AppData().settings.showBank && bankAccount !=null)
+                      if (AppData().settings.showBank && bankAccount != null)
                         pw.Container(
                           padding: const pw.EdgeInsets.all(8),
                           decoration: pw.BoxDecoration(
@@ -592,10 +598,10 @@ class PdfGenerators6 {
   );
 
   static pw.Widget _itemsTable(
-      List<ItemModel> items,
-      String currency,
-      InvoiceModel invoice,
-      ) {
+    List<ItemModel> items,
+    String currency,
+    InvoiceModel invoice,
+  ) {
     // ---------------------------------------------
     // 🔥 1. Collect all unique custom field names
     // ---------------------------------------------
@@ -615,11 +621,11 @@ class PdfGenerators6 {
     // ---------------------------------------------
     final headers = [
       'SL',
-      defaultHeaders[0],       // Description
-      ...customFields,         // ⬅ Dynamic custom fields
-      defaultHeaders[1],       // Qty
-      defaultHeaders[2],       // Rate
-      defaultHeaders[3],       // Amount
+      defaultHeaders[0], // Description
+      ...customFields, // ⬅ Dynamic custom fields
+      defaultHeaders[1], // Qty
+      defaultHeaders[2], // Rate
+      defaultHeaders[3], // Amount
     ];
 
     // ---------------------------------------------
@@ -638,10 +644,18 @@ class PdfGenerators6 {
       }
 
       final item = items[i];
+      double customValue = 1.0;
+
+      for (final controller in item.customControllers.values) {
+        final v = double.tryParse(controller.text.trim());
+        if (v != null && v > 0) {
+          customValue *= v;
+        }
+      }
 
       final qty = double.tryParse(item.qty.text) ?? 1;
       final rate = double.tryParse(item.rate.text) ?? 0;
-      final amount = qty * rate;
+      final amt = customValue * qty * rate;
 
       // 🔥 fetch each custom field's value for this item
       final customValues = customFields.map((field) {
@@ -654,7 +668,7 @@ class PdfGenerators6 {
         ...customValues, // ⬅ dynamic custom values
         qty.toStringAsFixed(0),
         "$currency${rate.toStringAsFixed(2)}",
-        "$currency${amount.toStringAsFixed(2)}",
+        "$currency${amt.toStringAsFixed(2)}",
       ];
     });
 
@@ -694,12 +708,12 @@ class PdfGenerators6 {
       // ---------------------------------------------
       columnWidths: {
         0: const pw.FixedColumnWidth(25), // SL
-        1: const pw.FlexColumnWidth(5),   // Description
+        1: const pw.FlexColumnWidth(5), // Description
         for (int k = 0; k < customFields.length; k++)
           (2 + k): const pw.FlexColumnWidth(1.5), // Custom fields
         (2 + customFields.length): const pw.FlexColumnWidth(1.5), // Qty
-        (3 + customFields.length): const pw.FlexColumnWidth(1.5),   // Rate
-        (4 + customFields.length): const pw.FlexColumnWidth(2),   // Amount
+        (3 + customFields.length): const pw.FlexColumnWidth(1.5), // Rate
+        (4 + customFields.length): const pw.FlexColumnWidth(2), // Amount
       },
 
       cellAlignments: {
@@ -713,5 +727,4 @@ class PdfGenerators6 {
       },
     );
   }
-
 }

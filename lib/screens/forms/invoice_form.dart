@@ -119,7 +119,10 @@ class _InvoiceFormPageState extends State<InvoiceFormPage> {
       rateLabel = settings.rateTitle.isNotEmpty ? settings.rateTitle : "Price";
 
       // Custom labels (Map<String,String>)
-      customLabels = {for (var f in settings.customFields) f: f};
+      customLabels = {
+        for (var f in settings.customFields)
+          f['label'].toString(): f['label'].toString(),
+      };
     });
   }
 
@@ -128,36 +131,57 @@ class _InvoiceFormPageState extends State<InvoiceFormPage> {
   }
 
   void _addItem() {
-    // NEW invoice → take settings fields
     if (widget.existingInvoice == null) {
-      final fields = List<String>.from(AppData().settings.customFields);
-      setState(
-        () => items.add(
-          ItemModel(desc: '', qty: '', rate: '', customFields: fields),
-        ),
-      );
+      final fields = AppData()
+          .settings
+          .customFields
+          .map((e) => e['label'].toString())
+          .toList();
+
+      setState(() {
+        items.add(
+          ItemModel(
+            desc: '',
+            qty: '',
+            rate: '',
+            customFields: fields,
+          ),
+        );
+      });
       return;
     }
+
     final fields = customLabels?.keys.toList() ?? [];
-    // EDIT invoice → DO NOT ADD CUSTOM FIELDS
-    setState(
-      () => items.add(
+
+    setState(() {
+      items.add(
         ItemModel(
           desc: '',
           qty: '',
           rate: '',
-          customFields: fields, // 👈 No fields for edit mode
+          customFields: fields,
         ),
-      ),
-    );
+      );
+    });
   }
 
-  double get subtotal => items.fold(
-    0,
-    (s, i) =>
-        s +
-        ((int.tryParse(i.qty.text) ?? 0) * (double.tryParse(i.rate.text) ?? 0)),
-  );
+  double get subtotal => items.fold(0.0, (sum, item) {
+    double multiplier = 1.0;
+
+    for (final controller in item.customControllers.values) {
+      final text = controller.text.trim();
+      final value = double.tryParse(text);
+
+      if (value != null && value > 0) {
+        multiplier *= value;
+      }
+    }
+
+    final qty = double.tryParse(item.qty.text) ?? 0;
+    final rate = double.tryParse(item.rate.text) ?? 0;
+
+    return sum + (multiplier * qty * rate);
+  });
 
   double get _discount {
     final v = double.tryParse(discountController.text) ?? 0;
@@ -292,7 +316,11 @@ class _InvoiceFormPageState extends State<InvoiceFormPage> {
       rateLabel: rateLabel,
       customLabels: widget.existingInvoice != null
           ? (customLabels ?? {})
-          : {for (var f in settings.customFields) f: f},
+          : {
+              for (var f in settings.customFields)
+                f['label'].toString(): f['label'].toString(),
+            },
+
       items: items,
       subtotal: subtotal,
       discount: discountController.text,
@@ -775,6 +803,7 @@ class _InvoiceFormPageState extends State<InvoiceFormPage> {
                 descLabel: descLabel,
                 qtyLabel: qtyLabel,
                 rateLabel: rateLabel,
+                customLabels: customLabels,
                 currencySymbol: currencySymbol,
                 onChanged: () {
                   setState(() {});

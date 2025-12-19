@@ -210,9 +210,17 @@ class PdfGenerator3 {
     return pw.TableHelper.fromTextArray(
       headers: headers,
       data: items.map((item) {
+        double customValue = 1.0;
+
+        for (final controller in item.customControllers.values) {
+          final v = double.tryParse(controller.text.trim());
+          if (v != null && v > 0) {
+            customValue *= v;
+          }
+        }
         final qty = toDouble(item.qty.text);
         final rate = toDouble(item.rate.text);
-        final amount = qty * rate;
+        final amt = customValue * qty * rate;
 
         return [
           item.desc.text,
@@ -224,7 +232,7 @@ class PdfGenerator3 {
 
           qty.toStringAsFixed(0),
           "$currencySymbol${rate.toStringAsFixed(2)}",
-          "$currencySymbol${amount.toStringAsFixed(2)}",
+          "$currencySymbol${amt.toStringAsFixed(2)}",
         ];
       }).toList(),
       headerDecoration: pw.BoxDecoration(color: accentBlue),

@@ -202,7 +202,10 @@ class _AppDrawerState extends State<AppDrawer> {
 
             //Reports
             ListTile(
-              leading: const Icon(Icons.report_gmailerrorred, color: Colors.orange),
+              leading: const Icon(
+                Icons.report_gmailerrorred,
+                color: Colors.orange,
+              ),
               title: const Text(
                 "Reports",
                 style: TextStyle(fontWeight: FontWeight.bold),
@@ -218,7 +221,10 @@ class _AppDrawerState extends State<AppDrawer> {
 
             //Support
             ListTile(
-              leading: const Icon(Icons.contact_support_outlined, color: Colors.green),
+              leading: const Icon(
+                Icons.contact_support_outlined,
+                color: Colors.green,
+              ),
               title: const Text(
                 "Support",
                 style: TextStyle(fontWeight: FontWeight.bold),

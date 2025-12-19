@@ -320,7 +320,7 @@ class _InvoiceListPageState extends State<InvoiceListPage> {
         backgroundColor: backgroundColor,
         foregroundColor: Colors.black,
         title: Text(
-          "Invoice Dashboard",
+          "Dashboard",
           style: TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: titleFontSize,

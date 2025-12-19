@@ -1,9 +1,8 @@
-
-
 import 'package:invoice/models/bank_account_model.dart';
 
 class ProfileModel {
   final String? userID;
+  String? originalImageBase64;
   String? profileImageBase64;
   final String name;
   final String email;
@@ -18,6 +17,7 @@ class ProfileModel {
 
   ProfileModel({
     this.userID,
+    this.originalImageBase64,
     this.profileImageBase64,
     required this.name,
     required this.email,
@@ -33,7 +33,8 @@ class ProfileModel {
 
   factory ProfileModel.fromJson(Map<String, dynamic> json) {
     return ProfileModel(
-      userID:json['userID'],
+      userID: json['userID'],
+      originalImageBase64: json["originalImageBase64"],
       profileImageBase64: json["profileImageBase64"],
       name: json['name'] ?? '',
       email: json['email'] ?? '',
@@ -44,15 +45,18 @@ class ProfileModel {
       country: json['country'] ?? '',
       pan: json['pan'] ?? '',
       gst: json['gst'] ?? '',
-      bankAccounts: (json['bankAccounts'] as List<dynamic>?)
-          ?.map((e) => BankAccountModel.fromJson(e))
-          .toList() ?? [],
+      bankAccounts:
+          (json['bankAccounts'] as List<dynamic>?)
+              ?.map((e) => BankAccountModel.fromJson(e))
+              .toList() ??
+          [],
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      'userID':userID,
+      'userID': userID,
+      'originalImageBase64': originalImageBase64,
       'profileImageBase64': profileImageBase64 ?? '',
       'name': name,
       'email': email,
@@ -69,6 +73,7 @@ class ProfileModel {
 
   ProfileModel copyWith({
     String? userID,
+    String? originalImageBase64,
     String? profileImageBase64,
     String? name,
     String? email,
@@ -83,6 +88,7 @@ class ProfileModel {
   }) {
     return ProfileModel(
       userID: userID ?? this.userID,
+      originalImageBase64: originalImageBase64 ?? this.originalImageBase64,
       profileImageBase64: profileImageBase64 ?? this.profileImageBase64,
       name: name ?? this.name,
       email: email ?? this.email,
@@ -95,23 +101,5 @@ class ProfileModel {
       gst: gst ?? this.gst,
       bankAccounts: bankAccounts ?? this.bankAccounts,
     );
-  }
-  @override
-  String toString() {
-    return '''
-ProfileModel(
-  userID: $userID,
-  name: $name,
-  email: $email,
-  phone: $phone,
-  street: $street,
-  city: $city,
-  state: $state,
-  country: $country,
-  pan: $pan,
-  gst: $gst,
-  bankAccounts: $bankAccounts
-)
-''';
   }
 }

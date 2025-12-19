@@ -26,18 +26,19 @@ class ItemModel {
   //      FROM JSON FIX
   // ---------------------------
   factory ItemModel.fromJson(Map<String, dynamic> json) {
-    final customData = json['customData'] ?? {};
+    final Map<String, dynamic> customData =
+    Map<String, dynamic>.from(json['customData'] ?? {});
 
     final model = ItemModel(
       desc: json['desc'] ?? '',
       qty: json['qty'] ?? '',
       rate: json['rate'] ?? '',
-      customFields: customData.keys.toList(),   // <<< IMPORTANT !!!
+      customFields: customData.keys.map((e) => e.toString()).toList(),
     );
 
-    // Fill values from JSON
+    // ✅ SET VALUES
     customData.forEach((key, value) {
-      model.customControllers[key]?.text = value.toString();
+      model.customControllers[key]?.text = value?.toString() ?? '';
     });
 
     return model;

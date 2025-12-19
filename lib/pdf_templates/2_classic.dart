@@ -461,20 +461,28 @@ class PdfGenerator2 {
         ),
 
         // 🔥 DATA ROWS
-        ...items.map((e) {
-          final qty = toDouble(e.qty.text);
-          final rate = toDouble(e.rate.text);
-          final amt = qty * rate;
+        ...items.map((item) {
+          double customValue = 1.0;
+
+          for (final controller in item.customControllers.values) {
+            final v = double.tryParse(controller.text.trim());
+            if (v != null && v > 0) {
+              customValue *= v;
+            }
+          }
+          final qty = toDouble(item.qty.text);
+          final rate = toDouble(item.rate.text);
+          final amt = customValue * qty * rate;
 
           return pw.TableRow(
             children: [
               // 1️⃣ Description
-              _rowCell(e.desc.text.trim()),
+              _rowCell(item.desc.text.trim()),
 
               // 2️⃣ Custom fields (in same order as headers list)
               for (var fieldName in customFieldNames)
                 _rowCell(
-                  e.customControllers[fieldName]?.text ?? "",
+                  item.customControllers[fieldName]?.text ?? "",
                   align: pw.TextAlign.center,
                 ),
 

@@ -393,9 +393,7 @@ class PdfGenerator1 {
                           ),
                         ),
                         pw.Text(
-                          (invoice.discountType) == 'percent'
-                              ? "${discount.toStringAsFixed(2)}%"
-                              : "$currencySymbol${discount.toStringAsFixed(2)}",
+                          "$currencySymbol${_toDouble(invoice.discountAmount).toStringAsFixed(2)}",
                           style: pw.TextStyle(fontSize: 12),
                         ),
                       ],
@@ -409,14 +407,14 @@ class PdfGenerator1 {
                       mainAxisAlignment: pw.MainAxisAlignment.end,
                       children: [
                         pw.Text(
-                          "Tax : ",
+                          "Tax (${invoice.tax}%) : ",
                           style: pw.TextStyle(
                             fontSize: 14,
                             fontWeight: pw.FontWeight.bold,
                           ),
                         ),
                         pw.Text(
-                          "${tax.toStringAsFixed(2)}%",
+                          "$currencySymbol${_toDouble(invoice.taxAmount).toStringAsFixed(2)}",
                           style: pw.TextStyle(fontSize: 12),
                         ),
                       ],
@@ -437,7 +435,7 @@ class PdfGenerator1 {
                           ),
                         ),
                         pw.Text(
-                          "$currencySymbol${shipping.toStringAsFixed(2)}",
+                          "$currencySymbol${_toDouble(invoice.shipping).toStringAsFixed(2)}",
                           style: pw.TextStyle(fontSize: 12),
                         ),
                       ],
@@ -591,8 +589,8 @@ class PdfGenerator1 {
           return widgets;
         },
       ),
-    );
 
+    );
     // 🔹 PDF bytes
     final bytes = await pdf.save();
     final fileName = "invoice_${invoice.invoiceNo}.pdf";
@@ -662,9 +660,17 @@ class PdfGenerator1 {
 
         // 🔵 ITEM ROWS
         ...items.map((item) {
+          double customValue = 1.0;
+
+          for (final controller in item.customControllers.values) {
+            final v = double.tryParse(controller.text.trim());
+            if (v != null && v > 0) {
+              customValue *= v;
+            }
+          }
           final qty = toDouble(item.qty.text);
           final rate = toDouble(item.rate.text);
-          final amt = qty * rate;
+          final amt = customValue * qty * rate;
 
           return pw.TableRow(
             children: [

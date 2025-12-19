@@ -371,22 +371,32 @@ class PdfGenerators5 {
         return ['Item', '1', '0.00', '0.00'];
       }
 
-      final e = items[i];
-      final qty = double.tryParse(e.qty.text) ?? 1;
-      final rate = double.tryParse(e.rate.text) ?? 0;
-      final total = qty * rate;
+      final item = items[i];
+
+      double customValue = 1.0;
+
+      for (final controller in item.customControllers.values) {
+        final v = double.tryParse(controller.text.trim());
+        if (v != null && v > 0) {
+          customValue *= v;
+        }
+      }
+
+      final qty = double.tryParse(item.qty.text) ?? 1;
+      final rate = double.tryParse(item.rate.text) ?? 0;
+      final amt = customValue * qty * rate;
 
       return [
-        e.desc.text,
+        item.desc.text,
 
         // 🔥 custom field values
         ...customFieldsList.map((field) {
-          return e.customControllers[field]?.text ?? "-";
+          return item.customControllers[field]?.text ?? "-";
         }),
 
         qty.toStringAsFixed(0),
         "$currency${rate.toStringAsFixed(2)}",
-        "$currency${total.toStringAsFixed(2)}",
+        "$currency${amt.toStringAsFixed(2)}",
       ];
     });
 

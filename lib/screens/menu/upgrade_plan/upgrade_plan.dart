@@ -74,19 +74,11 @@ class _PlanPageState extends State<PlanPage> {
     _inAppPurchase.buyNonConsumable(purchaseParam: purchaseParam);
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _inAppPurchase.purchaseStream.listen((purchaseList) {
-      _handlePurchase(purchaseList);
-    });
-  }
-
   void _handlePurchase(List<PurchaseDetails> purchaseList) async {
     for (var purchase in purchaseList) {
       if (purchase.status == PurchaseStatus.purchased) {
         if (purchase.pendingCompletePurchase) {
-          await _inAppPurchase.completePurchase(purchase); // acknowledgement
+          await _inAppPurchase.completePurchase(purchase);
         }
 
         SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -97,6 +89,22 @@ class _PlanPageState extends State<PlanPage> {
         Navigator.pop(context);
         _successDialog();
       } else if (purchase.status == PurchaseStatus.error) {
+        final errorMessage = purchase.error?.message.toLowerCase() ?? "";
+
+        if (errorMessage.contains("alreadyowned") ||
+            errorMessage.contains("already") ||
+            errorMessage.contains("owned")) {
+          SharedPreferences prefs = await SharedPreferences.getInstance();
+          prefs.setBool("isPurchase", true);
+          isPurchase = true;
+
+          if (!mounted) return;
+          Navigator.pop(context);
+          _successDialog();
+          return;
+        }
+
+        // Other errors
         if (!mounted) return;
         Navigator.pop(context);
         ScaffoldMessenger.of(
@@ -104,10 +112,6 @@ class _PlanPageState extends State<PlanPage> {
         ).showSnackBar(SnackBar(content: Text("Payment Failed")));
       }
     }
-  }
-
-  Future<void> restorePurchase() async {
-    await _inAppPurchase.restorePurchases();
   }
 
   void _successDialog() {
@@ -219,15 +223,6 @@ class _PlanPageState extends State<PlanPage> {
         actions: isMobile
             ? null
             : [
-                CustomIconButton(
-                  label: "Restore Purchase",
-                  padding: EdgeInsets.symmetric(horizontal: 25, vertical: 12),
-                  borderColor: Colors.black,
-                  textColor: Colors.black,
-                  fontSize: buttonFontSize,
-                  onTap: restorePurchase,
-                ),
-                SizedBox(width: 10),
                 Padding(
                   padding: EdgeInsets.only(right: 20),
                   child: CustomIconButton(
@@ -511,7 +506,6 @@ class _PlanPageState extends State<PlanPage> {
                 double vertical = isSmallScreen ? 15 : 5;
                 double buttonPadding = isSmallScreen ? 12 : 15;
                 double fontSize = isSmallScreen ? 15 : 17;
-                double spacing = isSmallScreen ? 8 : 10;
 
                 return SafeArea(
                   child: Padding(
@@ -530,19 +524,6 @@ class _PlanPageState extends State<PlanPage> {
                             vertical: buttonPadding,
                           ),
                           onPressed: _proceed,
-                        ),
-                        SizedBox(height: spacing),
-                        CustomElevatedButton(
-                          label: "Restore Purchase",
-                          fontSize: fontSize,
-                          borderColor: Colors.black,
-                          borderRadius: BorderRadius.circular(12),
-                          padding: EdgeInsets.symmetric(
-                            vertical: buttonPadding,
-                          ),
-                          backgroundColor: Colors.transparent,
-                          textColor: Colors.black,
-                          onPressed: restorePurchase,
                         ),
                       ],
                     ),

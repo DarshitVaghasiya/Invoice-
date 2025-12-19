@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:invoice/Global%20Veriables/global_veriable.dart';
 import 'package:invoice/app_data/app_data.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-
 class InvoiceTemplates extends StatefulWidget {
   const InvoiceTemplates({super.key});
 

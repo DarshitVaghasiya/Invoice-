@@ -375,10 +375,18 @@ class PdfGenerator4 {
         ),
 
         // 🔵 DATA ROWS
-        ...items.map((e) {
-          final qty = toDouble(e.qty.text);
-          final rate = toDouble(e.rate.text);
-          final amt = qty * rate;
+        ...items.map((item) {
+          double customValue = 1.0;
+
+          for (final controller in item.customControllers.values) {
+            final v = double.tryParse(controller.text.trim());
+            if (v != null && v > 0) {
+              customValue *= v;
+            }
+          }
+          final qty = toDouble(item.qty.text);
+          final rate = toDouble(item.rate.text);
+          final amt = customValue * qty * rate;
 
           return pw.TableRow(
             decoration: pw.BoxDecoration(
@@ -386,11 +394,11 @@ class PdfGenerator4 {
             ),
             children: [
               // Description
-              _tableCell(e.desc.text),
+              _tableCell(item.desc.text),
 
               // 🔥 Custom Fields (center)
               ...customFieldsList.map((field) {
-                final value = e.customControllers[field]?.text ?? "-";
+                final value = item.customControllers[field]?.text ?? "-";
                 return _tableCell(value, align: pw.TextAlign.center);
               }),
 

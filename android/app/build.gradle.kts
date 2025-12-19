@@ -71,7 +71,7 @@ flutter {
     source = "../.."
 }
 dependencies {
-    implementation("com.android.billingclient:billing-ktx:6.0.1")
+    implementation("com.android.billingclient:billing-ktx:7.1.0")
     configurations.all {
         resolutionStrategy {
             force("androidx.activity:activity-ktx:1.9.0")

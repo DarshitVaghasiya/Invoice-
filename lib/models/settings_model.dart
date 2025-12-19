@@ -9,7 +9,7 @@ class SettingsModel {
   String qtyTitle;
   String rateTitle;
   String? signatureBase64;
-  List<String> customFields;
+  List<Map<String, dynamic>> customFields;
 
   SettingsModel({
     this.customFields = const [],
@@ -27,7 +27,11 @@ class SettingsModel {
 
   factory SettingsModel.fromJson(Map<String, dynamic> json) {
     return SettingsModel(
-      customFields: List<String>.from(json['customFields'] ?? []),
+      customFields: List<Map<String, dynamic>>.from(
+        (json['customFields'] ?? []).map(
+              (e) => Map<String, dynamic>.from(e),
+        ),
+      ),
       showTax: json["showTax"] ?? false,
       showPurchaseNo: json["showPurchaseNo"] ?? false,
       showBank: json["showBank"] ?? true,
@@ -57,9 +61,8 @@ class SettingsModel {
     };
   }
 
-  /// ✅ Add this method
   SettingsModel copyWith({
-    List<String>? customFields,
+    List<Map<String, dynamic>>? customFields,
     bool? showTax,
     bool? showPurchaseNo,
     bool? showBank,

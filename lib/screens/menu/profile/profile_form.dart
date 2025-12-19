@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:device_info_plus/device_info_plus.dart';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
@@ -15,6 +15,52 @@ import 'package:invoice/widgets/buttons/custom_iconbutton.dart';
 import 'package:invoice/widgets/buttons/custom_textformfield.dart';
 import 'package:uuid/uuid.dart';
 
+class ClearCircleOverlayPainter extends CustomPainter {
+  final Offset center;
+
+  ClearCircleOverlayPainter({required this.center});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final overlayPaint = Paint()..color = Colors.black.withOpacity(0.7);
+
+    final radius = size.width * 0.45;
+
+    // Full screen path
+    final backgroundPath = Path()
+      ..addRect(Rect.fromLTWH(0, 0, size.width, size.height));
+
+    // Circle hole
+    final circlePath = Path()
+      ..addOval(Rect.fromCircle(center: center, radius: radius));
+
+    // Remove circle from background
+    final finalPath = Path.combine(
+      PathOperation.difference,
+      backgroundPath,
+      circlePath,
+    );
+
+    // Draw overlay
+    canvas.drawPath(finalPath, overlayPaint);
+
+    // White circle border
+    canvas.drawCircle(
+      center,
+      radius,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2
+        ..color = Colors.white,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant ClearCircleOverlayPainter oldDelegate) {
+    return oldDelegate.center != center;
+  }
+}
+
 class InvoiceProfileForm extends StatefulWidget {
   const InvoiceProfileForm({super.key});
 
@@ -23,7 +69,9 @@ class InvoiceProfileForm extends StatefulWidget {
 }
 
 class _InvoiceProfileFormState extends State<InvoiceProfileForm> {
+  Offset _circleCenter = Offset.zero;
   final _formKey = GlobalKey<FormState>();
+  final GlobalKey _cropKey = GlobalKey();
 
   final nameController = TextEditingController();
   final emailController = TextEditingController();
@@ -43,6 +91,7 @@ class _InvoiceProfileFormState extends State<InvoiceProfileForm> {
   bool isEditing = false;
   bool showTaxDetails = true;
   bool showBank = true;
+  File? _originalImage;
   File? _profileImage;
 
   @override
@@ -109,12 +158,24 @@ class _InvoiceProfileFormState extends State<InvoiceProfileForm> {
   Future<void> _saveProfile() async {
     if (!_formKey.currentState!.validate()) return;
 
-    String base64Image;
+    String croppedBase64;
+    String originalBase64;
+
+    if (_profileImage == null && _originalImage != null) {
+      await _cropAndSaveCircleImage();
+    }
+    // 🔵 CROPPED IMAGE (circle)
     if (_profileImage != null) {
-      final imageBytes = await _profileImage!.readAsBytes();
-      base64Image = base64Encode(imageBytes);
+      croppedBase64 = base64Encode(await _profileImage!.readAsBytes());
     } else {
-      base64Image = AppData().profile?.profileImageBase64 ?? '';
+      croppedBase64 = AppData().profile?.profileImageBase64 ?? '';
+    }
+
+    // 🔵 ORIGINAL IMAGE (full)
+    if (_originalImage != null) {
+      originalBase64 = base64Encode(await _originalImage!.readAsBytes());
+    } else {
+      originalBase64 = AppData().profile?.originalImageBase64 ?? '';
     }
 
     List<BankAccountModel> updatedBankAccounts = List.from(
@@ -143,7 +204,9 @@ class _InvoiceProfileFormState extends State<InvoiceProfileForm> {
 
     final profile = ProfileModel(
       userID: uuid.v4(),
-      profileImageBase64: base64Image,
+      originalImageBase64: originalBase64,
+      // ✅ FULL IMAGE
+      profileImageBase64: croppedBase64,
       name: nameController.text,
       email: emailController.text,
       phone: phoneController.text,
@@ -172,92 +235,233 @@ class _InvoiceProfileFormState extends State<InvoiceProfileForm> {
   Future<void> _pickImage() async {
     if (!isEditing) return;
 
-    if (_profileImage == null) {
+    if (_profileImage == null &&
+        (AppData().profile?.profileImageBase64?.isEmpty ?? true)) {
       await _selectImageFromGallery();
     } else {
       _showFullImagePreview();
     }
   }
 
-  void _showFullImagePreview() {
+  Future<void> _cropAndSaveCircleImage() async {
+    if (_originalImage == null) {
+      debugPrint("❌ Original image is null");
+      return;
+    }
+
+    try {
+      // 1️⃣ Load original image
+      final bytes = await _originalImage!.readAsBytes();
+      final codec = await instantiateImageCodec(bytes);
+      final frame = await codec.getNextFrame();
+      final uiImage = frame.image;
+
+      final size = MediaQuery.of(context).size;
+      final radius = size.width * 0.45;
+
+      final scaleX = uiImage.width / size.width;
+      final scaleY = uiImage.height / size.height;
+
+      final centerX = _circleCenter.dx * scaleX;
+      final centerY = _circleCenter.dy * scaleY;
+      final imageRadius = radius * scaleX;
+
+      final recorder = PictureRecorder();
+      final canvas = Canvas(recorder);
+
+      final paint = Paint();
+
+      // 3️⃣ Draw clipped circle
+      canvas.clipPath(
+        Path()..addOval(
+          Rect.fromCircle(
+            center: Offset(imageRadius, imageRadius),
+            radius: imageRadius,
+          ),
+        ),
+      );
+
+      canvas.drawImageRect(
+        uiImage,
+        Rect.fromCircle(center: Offset(centerX, centerY), radius: imageRadius),
+        Rect.fromLTWH(0, 0, imageRadius * 2, imageRadius * 2),
+        paint,
+      );
+
+      final croppedImage = await recorder.endRecording().toImage(
+        (imageRadius * 2).toInt(),
+        (imageRadius * 2).toInt(),
+      );
+
+      final byteData = await croppedImage.toByteData(
+        format: ImageByteFormat.png,
+      );
+
+      final pngBytes = byteData!.buffer.asUint8List();
+
+      final tempDir = await Directory.systemTemp.createTemp();
+      final file = File('${tempDir.path}/profile_circle.png');
+      await file.writeAsBytes(pngBytes);
+
+      setState(() {
+        _profileImage = file;
+      });
+    } catch (e) {
+      debugPrint("Circle crop error: $e");
+    }
+  }
+
+  Future<void> _showFullImagePreview() async {
+    if (_originalImage == null) {
+      final storedBase64 = AppData().profile?.originalImageBase64;
+
+      if (storedBase64 != null && storedBase64.isNotEmpty) {
+        final bytes = base64Decode(storedBase64);
+
+        final tempDir = await Directory.systemTemp.createTemp();
+        final file = File('${tempDir.path}/original_restore.png');
+        await file.writeAsBytes(bytes);
+
+        _originalImage = file; // ✅ NOW CROP WILL WORK
+      }
+    }
+
+    final size = MediaQuery.of(context).size;
+    _circleCenter = Offset(size.width / 2, size.height / 3);
+
     Navigator.of(context).push(
       PageRouteBuilder(
         opaque: false,
         barrierColor: Colors.black.withOpacity(0.95),
-        pageBuilder: (_, __, ___) => Scaffold(
-          backgroundColor: Colors.black,
-          body: Stack(
-            children: [
-              Center(
-                child: InteractiveViewer(
-                  child: Image.file(_profileImage!, fit: BoxFit.contain),
-                ),
-              ),
-              Positioned(
-                top: 40,
-                right: 20,
-                child: CustomIconButton(
-                  icon: Icons.close,
-                  textColor: Colors.white,
-                  iconSize: 32,
-                  onTap: () => Navigator.pop(context),
-                ),
-              ),
-              Positioned(
-                bottom: 0,
-                left: 0,
-                right: 0,
-                child: Container(
-                  padding: const EdgeInsets.all(50),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.6),
-                    borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(20),
+        pageBuilder: (_, _, _) {
+          return StatefulBuilder(
+            builder: (context, setPreviewState) {
+              return Scaffold(
+                backgroundColor: Colors.black,
+                body: Stack(
+                  children: [
+                    GestureDetector(
+                      onPanUpdate: (details) {
+                        setPreviewState(() {
+                          _circleCenter += details.delta;
+                        });
+                      },
+                      child: RepaintBoundary(
+                        key: _cropKey,
+                        child: Stack(
+                          children: [
+                            Center(
+                              child: InteractiveViewer(
+                                minScale: 1,
+                                maxScale: 4,
+                                child: _buildPreviewImage(),
+                              ),
+                            ),
+                            CustomPaint(
+                              size: MediaQuery.of(context).size,
+                              painter: ClearCircleOverlayPainter(
+                                center: _circleCenter,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: CustomIconButton(
-                          icon: Icons.edit_outlined,
-                          label: "Edit",
-                          fontSize: 18,
-                          textColor: Colors.white,
-                          onTap: () async {
-                            Navigator.pop(context);
-                            await _selectImageFromGallery();
-                          },
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: CustomIconButton(
-                          icon: Icons.close,
-                          label: "Remove",
-                          fontSize: 18,
-                          textColor: Colors.white,
-                          onTap: () async {
-                            Navigator.pop(context);
-                            setState(() => _profileImage = null);
 
-                            // 🧹 Also clear from profile model & storage
-                            final profile = AppData().profile;
-                            if (profile != null) {
-                              profile.profileImageBase64 = '';
-                              await InvoiceStorage.saveProfile(profile);
-                            }
-                          },
+                    Positioned(
+                      top: 40,
+                      right: 20,
+                      child: CustomIconButton(
+                        icon: Icons.close,
+                        textColor: Colors.white,
+                        iconSize: 32,
+                        onTap: () => Navigator.pop(context),
+                      ),
+                    ),
+                    Positioned(
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      child: Container(
+                        padding: const EdgeInsets.all(50),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.6),
+                          borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(20),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: CustomIconButton(
+                                label: "Edit",
+                                fontSize: 18,
+                                textColor: Colors.white,
+                                onTap: () async {
+                                  Navigator.pop(context);
+                                  await _selectImageFromGallery();
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: CustomIconButton(
+                                label: "Remove",
+                                fontSize: 18,
+                                textColor: Colors.white,
+                                onTap: () async {
+                                  Navigator.pop(context);
+                                  setState(() => _profileImage = null);
+
+                                  // 🧹 Also clear from profile model & storage
+                                  final profile = AppData().profile;
+                                  if (profile != null) {
+                                    profile.profileImageBase64 = '';
+                                    await InvoiceStorage.saveProfile(profile);
+                                  }
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: CustomIconButton(
+                                label: "Save",
+                                fontSize: 18,
+                                textColor: Colors.white,
+                                onTap: () async {
+                                  Navigator.of(context).pop();
+                                  if (_originalImage != null) {
+                                    await _cropAndSaveCircleImage();
+                                  }
+                                },
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              ),
-            ],
-          ),
-        ),
+              );
+            },
+          );
+        },
       ),
     );
+  }
+
+  Widget _buildPreviewImage() {
+    if (_originalImage != null) {
+      return Image.file(_originalImage!, fit: BoxFit.contain);
+    }
+
+    final originalBase64 = AppData().profile?.originalImageBase64;
+    if (originalBase64 != null && originalBase64.isNotEmpty) {
+      return Image.memory(base64Decode(originalBase64), fit: BoxFit.contain);
+    }
+
+    return const Icon(Icons.image_not_supported, color: Colors.white, size: 80);
   }
 
   /// ✅ Fixed version — shows image immediately after import
@@ -267,33 +471,13 @@ class _InvoiceProfileFormState extends State<InvoiceProfileForm> {
     if (pickedFile == null) return;
 
     setState(() {
-      _profileImage = File(pickedFile.path);
+      _originalImage = File(pickedFile.path); // 🔥 preview & crop
+      _profileImage = null; // 🔥 reset old crop
     });
 
-    final bytes = await _profileImage!.readAsBytes();
-    final base64Image = base64Encode(bytes);
-
-    final existingProfile =
-        AppData().profile ??
-        ProfileModel(
-          userID: '',
-          profileImageBase64: '',
-          name: '',
-          email: '',
-          phone: '',
-          street: '',
-          city: '',
-          state: '',
-          country: '',
-          pan: '',
-          gst: '',
-          bankAccounts: [],
-        );
-    final updatedProfile = existingProfile.copyWith(
-      profileImageBase64: base64Image,
-    );
-    AppData().profile = updatedProfile;
-    await InvoiceStorage.saveProfile(updatedProfile);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _showFullImagePreview();
+    });
   }
 
   @override
@@ -544,7 +728,7 @@ class _InvoiceProfileFormState extends State<InvoiceProfileForm> {
             ],
           ),
           margin: const EdgeInsets.only(bottom: 18),
-          padding: const EdgeInsets.fromLTRB(22,20,22,10),
+          padding: const EdgeInsets.fromLTRB(22, 20, 22, 10),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -570,41 +754,39 @@ class _InvoiceProfileFormState extends State<InvoiceProfileForm> {
                             height: 70,
                             decoration: const BoxDecoration(
                               shape: BoxShape.circle,
-                              gradient: LinearGradient(
-                                colors: [Color(0xFF80CBC4), Color(0xFF009688)],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
+                              color: Colors.white,
                             ),
-                            child: CircleAvatar(
-                              radius: 55,
-                              backgroundColor: Colors.grey.shade200,
-                              backgroundImage: _profileImage != null
-                                  ? FileImage(_profileImage!)
-                                  : (AppData()
-                                            .profile
-                                            ?.profileImageBase64
-                                            ?.isNotEmpty ??
-                                        false)
-                                  ? MemoryImage(
-                                      base64Decode(
-                                        AppData().profile!.profileImageBase64!,
-                                      ),
-                                    )
-                                  : null,
-                              child:
-                                  (_profileImage == null &&
-                                      (AppData()
+                            child: ClipOval(
+                              child: SizedBox(
+                                width: 70,
+                                height: 70,
+                                child: _profileImage != null
+                                    ? Image.file(
+                                        _profileImage!,
+                                        fit: BoxFit.cover, // 🔥 MOST IMPORTANT
+                                      )
+                                    : (AppData()
                                               .profile
                                               ?.profileImageBase64
-                                              ?.isEmpty ??
-                                          true))
-                                  ? const Icon(
-                                      Icons.person,
-                                      size: 50,
-                                      color: Colors.grey,
-                                    )
-                                  : null,
+                                              ?.isNotEmpty ??
+                                          false)
+                                    ? Image.memory(
+                                        base64Decode(
+                                          AppData()
+                                              .profile!
+                                              .profileImageBase64!,
+                                        ),
+                                        fit: BoxFit.cover, // 🔥
+                                      )
+                                    : Container(
+                                        color: Colors.grey.shade200,
+                                        child: const Icon(
+                                          Icons.person,
+                                          size: 40,
+                                          color: Colors.grey,
+                                        ),
+                                      ),
+                              ),
                             ),
                           ),
                           if (isEditing)
@@ -654,7 +836,6 @@ class _InvoiceProfileFormState extends State<InvoiceProfileForm> {
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       childAspectRatio: 5,
-      // Width–height ratio beautiful lagse
       children: children,
     );
   }
