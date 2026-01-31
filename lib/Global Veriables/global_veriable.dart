@@ -51,17 +51,18 @@ void showLimitDialog(String message) {
                         colors: [Color(0xFF0072FF), Color(0xFF00C6FF)],
                       ),
                     ),
-                    child: const Icon(Icons.lock, size: 50, color: Colors.white),
+                    child: const Icon(
+                      Icons.lock,
+                      size: 50,
+                      color: Colors.white,
+                    ),
                   ),
                   const SizedBox(height: 18),
 
                   // Title
                   const Text(
                     "Premium Feature",
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                    ),
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
                   ),
                   const SizedBox(height: 10),
 
@@ -136,4 +137,3 @@ void showLimitDialog(String message) {
     },
   );
 }
-

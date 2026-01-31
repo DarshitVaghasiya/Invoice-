@@ -17,10 +17,13 @@ class _SupportState extends State<Support> {
 
   void sendEmail() async {
     final toEmail = "darshitvaghasiya19@gmail.com";
+    final subject = "Feedback And Help For Invoice App "; // 👈 subject here
     final desc = descriptionController.text.trim();
 
-    final body = Uri.encodeComponent(desc);
-    final url = "mailto:$toEmail?&body=$body";
+    final encodedSubject = Uri.encodeComponent(subject);
+    final encodedBody = Uri.encodeComponent(desc);
+
+    final url = "mailto:$toEmail?subject=$encodedSubject&body=$encodedBody";
 
     if (await canLaunchUrl(Uri.parse(url))) {
       await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
@@ -131,7 +134,8 @@ class _SupportState extends State<Support> {
               child: CustomElevatedButton(
                 fontSize: 20,
                 label: "Send Message",
-                borderRadius: BorderRadius.circular(18),
+                borderRadius: BorderRadius.circular(12),
+                backgroundColor: Color(0xFF009A75),
                 onPressed: () {
                   if (formKey.currentState!.validate()) {
                     sendEmail();

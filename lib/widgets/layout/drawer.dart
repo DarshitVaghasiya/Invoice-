@@ -139,7 +139,7 @@ class _AppDrawerState extends State<AppDrawer> {
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
               onTap: () async {
-                Navigator.pop(context);
+                //Navigator.pop(context);
                 await Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -158,7 +158,7 @@ class _AppDrawerState extends State<AppDrawer> {
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
               onTap: () {
-                Navigator.pop(context);
+                // Navigator.pop(context);
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => const CustomerList()),
@@ -174,7 +174,7 @@ class _AppDrawerState extends State<AppDrawer> {
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
               onTap: () {
-                Navigator.pop(context);
+                //  Navigator.pop(context);
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => const ItemsList()),
@@ -190,7 +190,7 @@ class _AppDrawerState extends State<AppDrawer> {
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
               onTap: () {
-                Navigator.pop(context);
+                // Navigator.pop(context);
                 Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -211,7 +211,7 @@ class _AppDrawerState extends State<AppDrawer> {
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
               onTap: () {
-                Navigator.pop(context);
+                // Navigator.pop(context);
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => const ReportsList()),
@@ -230,7 +230,7 @@ class _AppDrawerState extends State<AppDrawer> {
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
               onTap: () {
-                Navigator.pop(context);
+                //  Navigator.pop(context);
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => const Support()),

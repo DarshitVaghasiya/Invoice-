@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:ui';
+import 'package:currency_picker/currency_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
@@ -94,6 +95,12 @@ class _InvoiceProfileFormState extends State<InvoiceProfileForm> {
   File? _originalImage;
   File? _profileImage;
 
+  final TextEditingController currencyController = TextEditingController();
+  bool showCurrency = true;
+  Currency? selectedCurrency;
+  String currencySymbol = '';
+  bool canShowSkip = false;
+
   @override
   void initState() {
     super.initState();
@@ -122,11 +129,16 @@ class _InvoiceProfileFormState extends State<InvoiceProfileForm> {
     final profile = AppData().profile;
 
     if (profile == null) {
-      setState(() => isEditing = true);
+      setState(() {
+        isEditing = true;
+        canShowSkip = true;
+      });
       return;
     }
 
     setState(() {
+      canShowSkip = !profile.skipUsed;
+      isEditing = false;
       nameController.text = profile.name;
       emailController.text = profile.email;
       phoneController.text = profile.phone;
@@ -136,7 +148,10 @@ class _InvoiceProfileFormState extends State<InvoiceProfileForm> {
       countryController.text = profile.country;
       panNoController.text = profile.pan;
       gstNoController.text = profile.gst;
-
+      if (profile.currencyCode.isNotEmpty) {
+        currencyController.text =
+            "${profile.currencyCode} (${profile.currencySymbol})";
+      }
       final defaultBank = AppData().profile!.bankAccounts!.isNotEmpty
           ? AppData().profile!.bankAccounts!.firstWhere(
               (b) => b.isPrimary,
@@ -156,8 +171,6 @@ class _InvoiceProfileFormState extends State<InvoiceProfileForm> {
   }
 
   Future<void> _saveProfile() async {
-    if (!_formKey.currentState!.validate()) return;
-
     String croppedBase64;
     String originalBase64;
 
@@ -216,7 +229,11 @@ class _InvoiceProfileFormState extends State<InvoiceProfileForm> {
       country: countryController.text,
       pan: panNoController.text,
       gst: gstNoController.text,
+      currencyCode: selectedCurrency?.code ?? '',
+      currencySymbol: selectedCurrency?.symbol ?? '',
+      currencyName: selectedCurrency?.name ?? '',
       bankAccounts: updatedBankAccounts,
+      skipUsed: AppData().profile?.skipUsed ?? false,
     );
 
     AppData().profile = profile;
@@ -236,6 +253,7 @@ class _InvoiceProfileFormState extends State<InvoiceProfileForm> {
     if (!isEditing) return;
 
     if (_profileImage == null &&
+        _originalImage == null &&
         (AppData().profile?.profileImageBase64?.isEmpty ?? true)) {
       await _selectImageFromGallery();
     } else {
@@ -412,13 +430,23 @@ class _InvoiceProfileFormState extends State<InvoiceProfileForm> {
                                 textColor: Colors.white,
                                 onTap: () async {
                                   Navigator.pop(context);
-                                  setState(() => _profileImage = null);
 
-                                  // 🧹 Also clear from profile model & storage
-                                  final profile = AppData().profile;
-                                  if (profile != null) {
-                                    profile.profileImageBase64 = '';
-                                    await InvoiceStorage.saveProfile(profile);
+                                  setState(() {
+                                    _profileImage = null;
+                                    _originalImage = null; // 🔥 VERY IMPORTANT
+
+                                    if (AppData().profile != null) {
+                                      AppData().profile!.profileImageBase64 =
+                                          '';
+                                      AppData().profile!.originalImageBase64 =
+                                          '';
+                                    }
+                                  });
+
+                                  if (AppData().profile != null) {
+                                    await InvoiceStorage.saveProfile(
+                                      AppData().profile!,
+                                    );
                                   }
                                 },
                               ),
@@ -509,7 +537,7 @@ class _InvoiceProfileFormState extends State<InvoiceProfileForm> {
             actions: [
               if (!isMobile)
                 Padding(
-                  padding: const EdgeInsets.only(right: 20),
+                  padding: const EdgeInsets.only(right: 10),
                   child: CustomIconButton(
                     icon: isEditing ? Icons.save : Icons.edit,
                     padding: EdgeInsets.symmetric(horizontal: 30, vertical: 12),
@@ -522,6 +550,7 @@ class _InvoiceProfileFormState extends State<InvoiceProfileForm> {
                     borderRadius: BorderRadius.circular(10),
                     onTap: () {
                       if (isEditing) {
+                        if (!_formKey.currentState!.validate()) return;
                         _saveProfile();
                       } else {
                         setState(() => isEditing = true);
@@ -529,6 +558,74 @@ class _InvoiceProfileFormState extends State<InvoiceProfileForm> {
                     },
                   ),
                 ),
+              if (!isMobile)
+                if (AppData().profile != null) ...[
+                  Padding(
+                    padding: const EdgeInsets.only(right: 20),
+                    child: CustomIconButton(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 30,
+                        vertical: 10,
+                      ),
+                      label: "Cancel",
+                      fontSize: 20,
+                      textColor: Colors.red,
+                      borderColor: Colors.red,
+                      borderRadius: BorderRadius.circular(10),
+                      onTap: () {
+                        Navigator.pop(context);
+                      },
+                    ),
+                  ),
+                ],
+              if (!isMobile)
+                if (isEditing && AppData().profile == null) ...[
+                  Padding(
+                    padding: const EdgeInsets.only(right: 20),
+                    child: CustomIconButton(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 30,
+                        vertical: 10,
+                      ),
+                      label: "Skip",
+                      fontSize: 20,
+                      textColor: Colors.black,
+                      borderColor: Colors.black,
+                      borderRadius: BorderRadius.circular(10),
+                      onTap: () async {
+                        final skippedProfile = ProfileModel(
+                          userID: uuid.v4(),
+                          originalImageBase64: '',
+                          profileImageBase64: '',
+                          name: '',
+                          email: '',
+                          phone: '',
+                          street: '',
+                          city: '',
+                          state: '',
+                          country: '',
+                          pan: '',
+                          gst: '',
+                          currencyCode: '',
+                          currencySymbol: '',
+                          currencyName: '',
+                          bankAccounts: [],
+                          skipUsed: true, // 🔥 MARK SKIPPED
+                        );
+
+                        AppData().profile = skippedProfile;
+                        await InvoiceStorage.saveProfile(skippedProfile);
+
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const InvoiceListPage(),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
             ],
           ),
           body: Center(
@@ -556,12 +653,29 @@ class _InvoiceProfileFormState extends State<InvoiceProfileForm> {
                             labelText: "Name",
                             controller: nameController,
                             enabled: isEditing,
+                            validator: (value) {
+                              if (value == null || value.trim().isEmpty) {
+                                return "Name is required";
+                              }
+                              return null;
+                            },
                           ),
                           textFormField(
                             labelText: "Email",
                             controller: emailController,
                             keyboardType: TextInputType.emailAddress,
                             enabled: isEditing,
+                            validator: (value) {
+                              if (value == null || value.trim().isEmpty) {
+                                return "Email is required";
+                              }
+                              if (!RegExp(
+                                r'^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$',
+                              ).hasMatch(value)) {
+                                return "Enter valid email";
+                              }
+                              return null;
+                            },
                           ),
                           textFormField(
                             labelText: "Phone Number",
@@ -572,6 +686,15 @@ class _InvoiceProfileFormState extends State<InvoiceProfileForm> {
                               FilteringTextInputFormatter.digitsOnly,
                               LengthLimitingTextInputFormatter(10),
                             ],
+                            validator: (value) {
+                              if (value == null || value.trim().isEmpty) {
+                                return "Phone number is required";
+                              }
+                              if (value.length != 10) {
+                                return "Enter 10 digit number";
+                              }
+                              return null;
+                            },
                           ),
                         ],
                         crossAxisCount,
@@ -599,6 +722,56 @@ class _InvoiceProfileFormState extends State<InvoiceProfileForm> {
                             labelText: "Country",
                             controller: countryController,
                             enabled: isEditing,
+                          ),
+                        ],
+                        crossAxisCount,
+                        crossAxisSpacing,
+                      ),
+                      _buildSection(
+                        "Select Currency",
+                        [
+                          textFormField(
+                            labelText: "Select Currency",
+                            controller: currencyController,
+                            enabled: isEditing,
+                            readOnly: true,
+                            suffixIcon: Icon(Icons.arrow_drop_down),
+                            onTap: () {
+                              showCurrencyPicker(
+                                context: context,
+                                showFlag: true,
+                                showCurrencyName: true,
+                                showCurrencyCode: true,
+                                onSelect: (Currency currency) {
+                                  setState(() {
+                                    selectedCurrency = currency;
+                                    currencyController.text =
+                                        "${currency.code} (${currency.symbol})";
+                                  });
+                                },
+                                theme: CurrencyPickerThemeData(
+                                  bottomSheetHeight:
+                                      MediaQuery.of(context).size.height * 0.95,
+                                  backgroundColor: Colors.white,
+                                  flagSize: 24,
+                                  titleTextStyle: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  subtitleTextStyle: const TextStyle(
+                                    fontSize: 16,
+                                    color: Colors.grey,
+                                  ),
+                                  inputDecoration: InputDecoration(
+                                    labelText: 'Search Currency',
+                                    prefixIcon: const Icon(Icons.search),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
                           ),
                         ],
                         crossAxisCount,
@@ -673,24 +846,83 @@ class _InvoiceProfileFormState extends State<InvoiceProfileForm> {
                             icon: isEditing ? Icons.save : Icons.edit,
                             backgroundColor: isEditing
                                 ? const Color(0xFF009A75)
-                                : Colors.orange,
+                                : Colors.orange.shade700,
                             onPressed: () {
                               if (isEditing) {
-                                _saveProfile();
+                                if (!_formKey.currentState!.validate()) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        "Please fill all required details before saving the profile.",
+                                      ),
+                                      behavior: SnackBarBehavior.floating,
+                                    ),
+                                  );
+                                } else {
+                                  _saveProfile();
+                                }
                               } else {
                                 setState(() => isEditing = true);
                               }
                             },
                           ),
                         ),
-                        if (!isEditing && AppData().profile != null) ...[
+                        if (isEditing && AppData().profile == null) ...[
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: CustomIconButton(
+                              label: "Skip",
+                              borderColor: Colors.black,
+                              textColor: Colors.black,
+                              fontSize: 16,
+                              onTap: () async {
+                                final skippedProfile = ProfileModel(
+                                  userID: uuid.v4(),
+                                  originalImageBase64: '',
+                                  profileImageBase64: '',
+                                  name: '',
+                                  email: '',
+                                  phone: '',
+                                  street: '',
+                                  city: '',
+                                  state: '',
+                                  country: '',
+                                  pan: '',
+                                  gst: '',
+                                  currencyCode: '',
+                                  currencySymbol: '',
+                                  currencyName: '',
+                                  bankAccounts: [],
+                                  skipUsed: true, // 🔥 MARK SKIPPED
+                                );
+
+                                AppData().profile = skippedProfile;
+                                await InvoiceStorage.saveProfile(
+                                  skippedProfile,
+                                );
+
+                                Navigator.pushReplacement(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const InvoiceListPage(),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+
+                        if (AppData().profile != null) ...[
                           const SizedBox(width: 12),
                           Expanded(
                             child: CustomIconButton(
                               label: "Cancel",
                               borderColor: Colors.red,
                               textColor: Colors.red,
-                              onTap: () => Navigator.pop(context),
+                              fontSize: 16,
+                              onTap: () {
+                                Navigator.pop(context);
+                              },
                             ),
                           ),
                         ],

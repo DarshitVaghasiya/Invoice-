@@ -50,7 +50,7 @@ class _AddItemsState extends State<AddItems> {
         id: widget.existingItem?.id ?? uuid.v4(),
         title: title.text.trim(),
         details: details.text.trim(),
-        price: int.tryParse(price.text) ?? 0,
+        price: double.tryParse(price.text) ?? 0,
       );
 
       // ✅ Save or update in AppData

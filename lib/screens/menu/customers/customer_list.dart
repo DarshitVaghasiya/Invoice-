@@ -13,10 +13,11 @@ class CustomerList extends StatefulWidget {
   State<CustomerList> createState() => _CustomerListState();
 }
 
-class _CustomerListState extends State<CustomerList>
-    with WidgetsBindingObserver {
+class _CustomerListState extends State<CustomerList> {
   List<CustomerModel> customers = [];
+  List<CustomerModel> filteredCustomer = [];
   String searchQuery = "";
+  final TextEditingController searchController = TextEditingController();
 
   @override
   void initState() {
@@ -24,30 +25,36 @@ class _CustomerListState extends State<CustomerList>
     _loadCustomers();
   }
 
-  Future<void> _loadCustomers() async {
+  void _onSearchChanged(String value) {
     setState(() {
-      customers = List<CustomerModel>.from(AppData().customers);
+      searchQuery = value.toLowerCase();
+      filteredCustomer = customers.where((customer) {
+        return customer.company.toLowerCase().contains(searchQuery);
+      }).toList();
     });
+  }
+
+  Future<void> _loadCustomers() async {
+    customers = List.from(AppData().customers);
+    _onSearchChanged(searchQuery);
   }
 
   Future<void> _editCustomer(CustomerModel customer) async {
     final index = customers.indexOf(customer);
     if (index == -1) return;
 
-    // Navigate to form and wait for result (returns updated customer)
     final updatedCustomer = await Navigator.push<CustomerModel?>(
       context,
       MaterialPageRoute(
-        builder: (context) =>
-            CustomerForm(existingCustomer: customer, index: index),
+        builder: (_) => CustomerForm(existingCustomer: customer, index: index),
       ),
     );
 
     if (updatedCustomer != null) {
       setState(() {
-        // Update the in-memory customer list
-        AppData().customers[index] = updatedCustomer;
         customers[index] = updatedCustomer;
+        AppData().customers = List.from(customers);
+        _onSearchChanged(searchQuery); // refresh filter
       });
     }
   }
@@ -55,9 +62,8 @@ class _CustomerListState extends State<CustomerList>
   Future<void> _deleteCustomer(CustomerModel customer) async {
     final confirmed = await showCustomAlertDialog(
       context: context,
-      title: "Delete Customers",
-      message:
-          "Are you sure you want to permanently delete customer? This action cannot be undone.",
+      title: "Delete Customer",
+      message: "Are you sure you want to permanently delete this customer?",
       icon: Icons.warning_amber_rounded,
       iconColor: Colors.red,
       btn3: "Delete",
@@ -68,6 +74,7 @@ class _CustomerListState extends State<CustomerList>
       setState(() {
         customers.remove(customer);
         AppData().customers = List.from(customers);
+        _onSearchChanged(searchQuery); // refresh filter
       });
     }
   }
@@ -81,9 +88,9 @@ class _CustomerListState extends State<CustomerList>
             constraints.maxWidth >= 600 && constraints.maxWidth < 1000;
 
         double padding = isMobile
-            ? 12
+            ? 14
             : isTablet
-            ? 20
+            ? 22
             : 32;
         double fontSize = isMobile
             ? 13
@@ -91,182 +98,211 @@ class _CustomerListState extends State<CustomerList>
             ? 15
             : 17;
 
-        final filteredCustomers = customers.where((c) {
-          final name = (c.name ?? "").toLowerCase();
-          final email = (c.email ?? "").toLowerCase();
-          return name.contains(searchQuery.toLowerCase()) ||
-              email.contains(searchQuery.toLowerCase());
-        }).toList();
-
         return Scaffold(
-          backgroundColor: Color(0xFFF0F2F5),
+          backgroundColor: const Color(0xFFF0F2F5),
+
+          /// 🔝 AppBar
           appBar: AppBar(
             elevation: 0,
-            scrolledUnderElevation: 0,
-            backgroundColor: Color(0xFFF0F2F5),
-            foregroundColor: Colors.black,
+            backgroundColor: const Color(0xFFF0F2F5),
             title: Text(
-              "Customer List",
+              "Customers",
               style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: fontSize + 11,
+                fontSize: fontSize + 10,
+                fontWeight: FontWeight.w700,
+                color: Colors.black87,
               ),
             ),
-            centerTitle: true,
           ),
+
+          /// 📄 Body
           body: Column(
             children: [
               Padding(
-                padding: EdgeInsets.fromLTRB(padding, 16, padding, 10),
+                padding: const EdgeInsets.all(14),
                 child: Container(
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.grey.shade500),
+                    borderRadius: BorderRadius.circular(10),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 6,
-                        offset: const Offset(0, 3),
+                        color: Colors.black.withOpacity(0.06),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
                       ),
                     ],
                   ),
                   child: TextField(
+                    controller: searchController,
                     decoration: InputDecoration(
                       hintText: "Search customers...",
-                      prefixIcon: Icon(Icons.search, color: Colors.black),
+                      prefixIcon: Icon(
+                        Icons.search_rounded,
+                        color: Colors.grey.shade600,
+                      ),
                       border: InputBorder.none,
-                      contentPadding: EdgeInsets.symmetric(
+                      contentPadding: const EdgeInsets.symmetric(
                         horizontal: 16,
                         vertical: 14,
                       ),
                     ),
-                    onChanged: (value) {
-                      setState(() => searchQuery = value);
-                    },
+                    onChanged: _onSearchChanged,
                   ),
                 ),
               ),
 
-              // 🧾 Customer List
+              /// 🧾 Customer List / Empty State
               Expanded(
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 350),
-                  child: filteredCustomers.isEmpty
-                      ? Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.people_outline,
-                                size: 70,
-                                color: Colors.grey.shade400,
-                              ),
-                              const SizedBox(height: 12),
-                              Text(
-                                "No customers found",
-                                style: TextStyle(
-                                  color: Colors.grey.shade600,
-                                  fontSize: fontSize + 1,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ),
-                        )
-                      : Padding(
-                          padding: EdgeInsets.symmetric(horizontal: padding),
-                          child: MasonryGridView.count(
-                            crossAxisCount: isMobile
-                                ? 1
-                                : isTablet
-                                ? 2
-                                : 3,
-                            mainAxisSpacing: 10,
-                            crossAxisSpacing: 12,
-                            itemCount: filteredCustomers.length,
-                            itemBuilder: (context, index) {
-                              final customer = filteredCustomers[index];
-                              return _buildCustomerCard(customer, fontSize);
-                            },
-                          ),
+                child: filteredCustomer.isEmpty
+                    ? _emptyCustomerState(fontSize)
+                    : SingleChildScrollView(
+                        padding: EdgeInsets.symmetric(horizontal: padding),
+                        child: Column(
+                          children: [
+                            MasonryGridView.count(
+                              crossAxisCount: isMobile
+                                  ? 1
+                                  : isTablet
+                                  ? 2
+                                  : 3,
+                              mainAxisSpacing: 14,
+                              crossAxisSpacing: 14,
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: filteredCustomer.length,
+                              itemBuilder: (context, index) {
+                                return _buildCustomerCard(
+                                  filteredCustomer[index],
+                                  fontSize,
+                                );
+                              },
+                            ),
+                            const SizedBox(height: 100),
+                          ],
                         ),
-                ),
+                      ),
               ),
             ],
           ),
+
+          /// ➕ FAB
           floatingActionButton: FloatingActionButton.extended(
+            elevation: 6,
+            backgroundColor: const Color(0xFF009A75),
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(18),
+            ),
+            icon: const Icon(Icons.add),
+            label: const Text(
+              "New Customer",
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
             onPressed: () async {
               if (!isPurchase && customers.length >= 3) {
                 showLimitDialog("Only 3 customers allowed in Free plan.");
                 return;
               }
-
               await Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const CustomerForm()),
+                MaterialPageRoute(builder: (_) => const CustomerForm()),
               );
-              await _loadCustomers();
+              _loadCustomers();
             },
-            icon: const Icon(Icons.add, size: 28),
-            label: const Text(
-              "New Customer",
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            backgroundColor: Color(0xFF009A75),
-            foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
           ),
         );
       },
     );
   }
 
+  /// 🧩 Customer Card
   Widget _buildCustomerCard(CustomerModel customer, double fontSize) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeOut,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.grey.shade300),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
+    return InkWell(
+      borderRadius: BorderRadius.circular(18),
+      onTap: () => _editCustomer(customer),
+      onLongPress: () => _deleteCustomer(customer),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.07),
+              blurRadius: 10,
+              offset: const Offset(0, 5),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 22,
+              backgroundColor: const Color(0xFF009A75).withOpacity(0.12),
+              child: const Icon(Icons.person_rounded, color: Color(0xFF009A75)),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Text(
+                customer.company.trim().isNotEmpty
+                    ? customer.company
+                    : (customer.name ?? "Unnamed"),
+                style: TextStyle(
+                  fontSize: fontSize + 2,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            Icon(Icons.chevron_right_rounded, color: Colors.grey.shade500),
+          ],
+        ),
       ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 10,
+    );
+  }
+
+  /// 🚫 Empty State
+  Widget _emptyCustomerState(double fontSize) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 60),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              height: 100,
+              width: 100,
+              decoration: BoxDecoration(
+                color: const Color(0xFF009A75).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(26),
+              ),
+              child: const Icon(
+                Icons.people_outline_rounded,
+                size: 48,
+                color: Color(0xFF009A75),
+              ),
+            ),
+            const SizedBox(height: 22),
+            Text(
+              "No customers yet",
+              style: TextStyle(
+                fontSize: fontSize + 3,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 36),
+              child: Text(
+                "Add your first customer to start managing invoices easily.",
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: fontSize,
+                  color: Colors.grey.shade600,
+                ),
+              ),
+            ),
+          ],
         ),
-        leading: CircleAvatar(
-          backgroundColor: const Color(0xFF00B686).withOpacity(0.1),
-          child: const Icon(Icons.person, color: Color(0xFF009A75), size: 24),
-        ),
-        title: Text(
-          (customer.company.trim().isNotEmpty)
-              ? customer.company
-              : (customer.name ?? "Unnamed"),
-          style: TextStyle(
-            fontSize: fontSize + 2,
-            fontWeight: FontWeight.bold,
-            color: Colors.black87,
-          ),
-        ),
-        trailing: Icon(
-          Icons.arrow_forward_ios_rounded,
-          size: 18,
-          color: Colors.grey.shade500,
-        ),
-        onTap: () => _editCustomer(customer),
-        onLongPress: () => _deleteCustomer(customer),
-        splashColor: Colors.transparent,
       ),
     );
   }

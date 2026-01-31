@@ -67,7 +67,8 @@ class InvoiceModel {
 
   factory InvoiceModel.fromJson(Map<String, dynamic> json) {
     return InvoiceModel(
-      invoiceID: json['invoiceID'] ?? "INV_${DateTime.now().millisecondsSinceEpoch}",
+      invoiceID:
+          json['invoiceID'] ?? "INV_${DateTime.now().millisecondsSinceEpoch}",
       customerId: json['customerId'].toString(),
       invoiceNo: json['invoiceNo'],
       poNumber: json['poNumber'],
@@ -80,7 +81,9 @@ class InvoiceModel {
       qtyLabel: json['qtyLabel'] ?? "Qty",
       rateLabel: json['rateLabel'] ?? "Price",
       customLabels: Map<String, String>.from(json["customLabels"] ?? {}),
-      items: List<ItemModel>.from(json['items'].map((x) => ItemModel.fromJson(x))),
+      items: List<ItemModel>.from(
+        json['items'].map((x) => ItemModel.fromJson(x)),
+      ),
       subtotal: (json['subtotal'] ?? 0).toDouble(),
       discount: json['discount'] ?? "0",
       discountAmount: (json['discountAmount'] ?? 0).toDouble(),

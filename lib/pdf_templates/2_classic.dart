@@ -27,6 +27,28 @@ class PdfGenerator2 {
     ];
   }
 
+  static double getCustomerPendingBalance(InvoiceModel currentInvoice) {
+    final invoices = AppData().invoices;
+
+    double pendingTotal = 0;
+
+    for (final inv in invoices) {
+      if (inv.customerId == currentInvoice.customerId) {
+        final total = double.tryParse(inv.total.toString()) ?? 0;
+
+        final bool isPaid = inv.status.toLowerCase() == 'paid';
+
+        final balance = isPaid ? 0 : total;
+
+        if (balance > 0) {
+          pendingTotal += balance;
+        }
+      }
+    }
+
+    return pendingTotal;
+  }
+
   static Future<File> generateClassicTemplate(InvoiceModel invoice) async {
     // 🔹 Load Fonts
     final baseFont = pw.Font.ttf(
@@ -79,6 +101,8 @@ class PdfGenerator2 {
     final pw.MemoryImage? signatureImage = SignatureHelper.fromBase64(
       settings.signatureBase64,
     );
+
+    final double pendingBalance = getCustomerPendingBalance(invoice);
 
     pdf.addPage(
       pw.MultiPage(
@@ -186,7 +210,7 @@ class PdfGenerator2 {
                         vertical: 6,
                       ),
                       child: pw.Text(
-                        "Balance Due:  $currencySymbol${toDouble(invoice.total).toStringAsFixed(2)}",
+                        "Balance Due:  $currencySymbol ${pendingBalance.toStringAsFixed(2)}",
                         style: pw.TextStyle(
                           fontWeight: pw.FontWeight.bold,
                           fontSize: 12,
@@ -306,7 +330,9 @@ class PdfGenerator2 {
           ),
           if (discount > 0)
             _totalRow(
-              "Discount",
+              invoice.discountType == 'percent'
+                  ? "Discount (${invoice.discount}%) : "
+                  : "Discount : ",
               "$currencySymbol${toDouble(invoice.discountAmount).toStringAsFixed(2)}",
             ),
           if (tax > 0)

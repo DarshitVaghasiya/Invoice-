@@ -171,7 +171,7 @@ class _InvoiceListPageState extends State<InvoiceListPage> {
           AppData().markUserRated(); // save inside InvoiceModel
         }
       });
-     }
+    }
 
     // Restrict free plan
     if (!isPurchase && invoices.length >= 10) {

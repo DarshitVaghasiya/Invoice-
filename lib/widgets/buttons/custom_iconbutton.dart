@@ -45,8 +45,11 @@ class CustomIconButton extends StatelessWidget {
         onTap: onTap,
         borderRadius: borderRadius ?? BorderRadius.circular(10),
         child: Container(
-          padding: padding ?? const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-          decoration: decoration ??
+          padding:
+              padding ??
+              const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          decoration:
+              decoration ??
               BoxDecoration(
                 color: backgroundColor ?? color,
                 borderRadius: borderRadius ?? BorderRadius.circular(10),
@@ -61,19 +64,14 @@ class CustomIconButton extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               mainAxisSize: MainAxisSize.min,
               children: [
-                if (icon != null)
-                  Icon(
-                    icon,
-                    size: iconSize,
-                    color: textColor,
-                  ),
+                if (icon != null) Icon(icon, size: iconSize, color: textColor),
                 if (label != null) ...[
                   const SizedBox(width: 4),
                   Flexible(
                     child: Text(
                       label!,
                       style: TextStyle(
-                        fontWeight: FontWeight.w500,
+                        fontWeight: FontWeight.w600,
                         color: textColor,
                         fontSize: fontSize,
                       ),
@@ -92,8 +90,7 @@ class CustomIconButton extends StatelessWidget {
                 ],
               ],
             ),
-          )
-
+          ),
         ),
       ),
     );

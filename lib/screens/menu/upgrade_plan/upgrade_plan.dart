@@ -26,6 +26,13 @@ class _PlanPageState extends State<PlanPage> {
   @override
   void initState() {
     super.initState();
+
+    // 🔒 Force Portrait only
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
+
     _initializePurchase();
 
     _subscription = _inAppPurchase.purchaseStream.listen(
@@ -154,12 +161,14 @@ class _PlanPageState extends State<PlanPage> {
 
   @override
   void dispose() {
+    // 🔓 Restore all orientations when leaving this screen
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
       DeviceOrientation.portraitDown,
       DeviceOrientation.landscapeLeft,
       DeviceOrientation.landscapeRight,
     ]);
+
     _subscription.cancel();
     super.dispose();
   }

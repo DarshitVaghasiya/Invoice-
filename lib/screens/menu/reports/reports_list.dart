@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:invoice/app_data/app_data.dart';
 import 'package:invoice/models/invoice_model.dart';
 import 'package:invoice/screens/menu/reports/report_pdf.dart';
@@ -13,7 +14,6 @@ class ReportsList extends StatefulWidget {
 }
 
 class _ReportsListState extends State<ReportsList> {
-  final GlobalKey _menuKey = GlobalKey();
   late List items;
   Status selectedStatus = Status.date;
   String selectedFilter = "date";
@@ -21,8 +21,9 @@ class _ReportsListState extends State<ReportsList> {
   List<String> customerList = [];
 
   // Report filter type
-  String reportType = "Weekly";
+  String reportType = "All";
   DateTimeRange? customRange;
+  late List allFilteredItems;
 
   List getPaidInvoices() {
     return AppData().invoices
@@ -33,7 +34,8 @@ class _ReportsListState extends State<ReportsList> {
   @override
   void initState() {
     super.initState();
-    items = getPaidInvoices();
+    allFilteredItems = getPaidInvoices();
+    items = List.from(allFilteredItems);
     _applySortByDate();
   }
 
@@ -63,23 +65,24 @@ class _ReportsListState extends State<ReportsList> {
   // REPORT TYPE FILTER HANDLING
   void _applyReportType() async {
     List allInvoices = getPaidInvoices();
+
     DateTime now = DateTime.now();
     setState(() {
       if (reportType == "Weekly") {
-        items = allInvoices
+        allFilteredItems = allInvoices
             .where(
               (e) => parseDate(e.date).isAfter(now.subtract(Duration(days: 7))),
             )
             .toList();
       } else if (reportType == "Monthly") {
-        items = allInvoices
+        allFilteredItems = allInvoices
             .where(
               (e) =>
                   parseDate(e.date).isAfter(now.subtract(Duration(days: 30))),
             )
             .toList();
       } else if (reportType == "Yearly") {
-        items = allInvoices
+        allFilteredItems = allInvoices
             .where(
               (e) =>
                   parseDate(e.date).isAfter(now.subtract(Duration(days: 365))),
@@ -87,12 +90,16 @@ class _ReportsListState extends State<ReportsList> {
             .toList();
       } else if (reportType == "Custom") {
         _selectCustomDate();
+      } else {
+        allFilteredItems = allInvoices;
       }
+
+      items = List.from(allFilteredItems);
 
       // update customer dropdown list also
       customerList =
-          items
-              .map((e) => e.billTo.trim().split('\n').first as String)
+          allFilteredItems
+              .map((e) => e.billTo.trim().split('\n').first)
               .toSet()
               .cast<String>()
               .toList()
@@ -133,6 +140,8 @@ class _ReportsListState extends State<ReportsList> {
               d.isBefore(picked.end.add(Duration(days: 1)));
         }).toList();
 
+        allFilteredItems = List.from(items);
+
         // UPDATE CUSTOMER DROPDOWN LIST BASED ON FILTERED INVOICES
         customerList =
             items
@@ -155,23 +164,23 @@ class _ReportsListState extends State<ReportsList> {
       selectedFilter = filter;
       if (filter != "customer") selectedCustomer = null;
 
+      items = List.from(allFilteredItems);
+
       if (filter == "date") {
         selectedStatus = Status.date;
-        items = getPaidInvoices();
         _applySortByDate();
       } else if (filter == "customer") {
         selectedStatus = Status.customer;
-        items = getPaidInvoices();
+
         customerList =
             items
-                .map((e) => e.billTo.trim().split('\n').first as String)
+                .map((e) => e.billTo.trim().split('\n').first)
                 .toSet()
                 .cast<String>()
                 .toList()
               ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
       } else if (filter == "amount") {
         selectedStatus = Status.amount;
-        items = getPaidInvoices();
         items.sort((a, b) {
           double totalA = double.tryParse(a.total.toString()) ?? 0;
           double totalB = double.tryParse(b.total.toString()) ?? 0;
@@ -183,219 +192,292 @@ class _ReportsListState extends State<ReportsList> {
 
   @override
   Widget build(BuildContext context) {
-    final width = MediaQuery.of(context).size.width;
-    double fontSize = width < 380
-        ? 14
-        : width < 600
-        ? 16
-        : width < 900
-        ? 18
-        : 22;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        bool isMobile = constraints.maxWidth < 600;
+        bool isTablet =
+            constraints.maxWidth >= 600 && constraints.maxWidth < 1000;
 
-    return Scaffold(
-      backgroundColor: Color(0xFFF0F2F5),
-      appBar: AppBar(
-        elevation: 0,
-        centerTitle: true,
-        backgroundColor: Color(0xFFF0F2F5),
-        foregroundColor: Colors.black,
-        scrolledUnderElevation: 0,
-        title: Text(
-          "Reports",
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: fontSize * 1.5,
-          ),
-        ),
-        actions: [
-          PopupMenuButton<int>(
-            icon: const Icon(Icons.file_download, size: 26),
-            color: Colors.white,
-            elevation: 6,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
+        double padding = isMobile
+            ? 14
+            : isTablet
+            ? 22
+            : 32;
+        double fontSize = isMobile
+            ? 16
+            : isTablet
+            ? 16
+            : 19;
+        return Scaffold(
+          backgroundColor: Color(0xFFF0F2F5),
+          appBar: AppBar(
+            elevation: 0,
+            centerTitle: true,
+            backgroundColor: Color(0xFFF0F2F5),
+            foregroundColor: Colors.black,
+            scrolledUnderElevation: 0,
+            title: Text(
+              "Reports",
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: fontSize * 1.5,
+              ),
             ),
-            onSelected: (v) async {
-              if (v == 1) {
-                if (items.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text("No data available to download report"),
-                      behavior: SnackBarBehavior.floating,
+            actions: [
+              Padding(
+                padding: EdgeInsetsGeometry.only(right: 5),
+                child: PopupMenuButton<int>(
+                  icon: const Icon(Icons.file_download, size: 26),
+                  color: Colors.white,
+                  elevation: 6,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  onSelected: (v) async {
+                    if (v == 1) {
+                      if (items.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              "No data available to download report",
+                            ),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                        return;
+                      }
+
+                      await ReportPdf.onDownloadReport(
+                        items.cast<InvoiceModel>(),
+                      );
+
+                      // ✅ SUCCESS MESSAGE AFTER SAVE
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text("Report downloaded successfully"),
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    }
+                  },
+
+                  itemBuilder: (context) => [
+                    const PopupMenuItem(
+                      value: 1,
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.picture_as_pdf,
+                            size: 22,
+                            color: Colors.red,
+                          ),
+                          SizedBox(width: 10),
+                          Text("Download PDF"),
+                        ],
+                      ),
                     ),
-                  );
-                  return; // stop here
-                }
-
-                await ReportPdf.onDownloadReport(items.cast<InvoiceModel>());
-              }
-
-            },
-            itemBuilder: (context) => [
-              const PopupMenuItem(
-                value: 1,
-                child: Row(
-                  children: [
-                    Icon(Icons.picture_as_pdf, size: 20),
-                    SizedBox(width: 10),
-                    Text("Download Report"),
                   ],
                 ),
               ),
             ],
           ),
-        ],
-      ),
 
-      body: Column(
-        children: [
-          Padding(
-            padding: EdgeInsetsGeometry.symmetric(horizontal: 20),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                PopupMenuButton<String>(
-                  elevation: 4,
-                  color: Colors.white,
-                  onSelected: (v) {
-                    setState(() => reportType = v);
-                    _applyReportType();
-                  },
-                  itemBuilder: (context) => [
-                    _simpleItem("Weekly", "Weekly Report"),
-                    _simpleItem("Monthly", "Monthly Report"),
-                    _simpleItem("Yearly", "Yearly Report"),
-                    _simpleItem("Custom", "Custom Report"),
-                  ],
-                  child: Row(
-                    children: [
-                      Text(
-                        "$reportType Report",
-                        style: const TextStyle(
-                          color: Colors.black,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 16,
+          body: Column(
+            children: [
+              Padding(
+                padding: EdgeInsetsGeometry.symmetric(horizontal: 20),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    PopupMenuButton<String>(
+                      elevation: 4,
+                      color: Colors.white,
+                      onSelected: (v) {
+                        setState(() => reportType = v);
+                        _applyReportType();
+                      },
+                      itemBuilder: (context) => [
+                        _simpleItem("All", "All Report"),
+                        _simpleItem("Weekly", "Weekly Report"),
+                        _simpleItem("Monthly", "Monthly Report"),
+                        _simpleItem("Yearly", "Yearly Report"),
+                        _simpleItem("Custom", "Custom Report"),
+                      ],
+                      child: Row(
+                        children: [
+                          Text(
+                            "$reportType Report",
+                            style: TextStyle(
+                              color: Colors.purple,
+                              fontWeight: FontWeight.w600,
+                              fontSize: fontSize,
+                            ),
+                          ),
+                          const Icon(
+                            Icons.keyboard_arrow_down_rounded,
+                            color: Colors.purple,
+                          ),
+                        ],
+                      ),
+                    ),
+                    PopupMenuButton<String>(
+                      elevation: 4,
+                      color: Colors.white,
+                      onSelected: _applyFilter,
+                      itemBuilder: (context) => [
+                        _simpleItem(
+                          "date",
+                          "Date Wise",
+                          icon: Icons.date_range,
                         ),
+                        _simpleItem(
+                          "customer",
+                          "Customer Wise",
+                          icon: Icons.person,
+                        ),
+                        _simpleItem(
+                          "amount",
+                          "Amount Wise",
+                          icon: Icons.currency_rupee,
+                        ),
+                      ],
+                      child: const Icon(
+                        Icons.tune_rounded,
+                        color: Colors.purple,
+                        size: 26,
                       ),
-                      const Icon(
-                        Icons.keyboard_arrow_down_rounded,
-                        color: Colors.black,
-                      ),
-                    ],
-                  ),
-                ),
-                PopupMenuButton<String>(
-                  elevation: 4,
-                  color: Colors.white,
-                  onSelected: _applyFilter,
-                  itemBuilder: (context) => [
-                    _simpleItem("date", "Date Wise", icon: Icons.date_range),
-                    _simpleItem(
-                      "customer",
-                      "Customer Wise",
-                      icon: Icons.person,
-                    ),
-                    _simpleItem(
-                      "amount",
-                      "Amount Wise",
-                      icon: Icons.currency_rupee,
                     ),
                   ],
-                  child: const Icon(
-                    Icons.tune_rounded,
-                    color: Colors.black,
-                    size: 26,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          SizedBox(height: 10),
-          // CUSTOMER DROPDOWN
-          if (selectedFilter == "customer")
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-              child: Container(
-                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.grey.shade400),
-                ),
-                child: DropdownButton<String>(
-                  isExpanded: true,
-                  dropdownColor: Colors.white,
-                  underline: SizedBox(),
-                  hint: Text("Select Customer"),
-                  value: selectedCustomer,
-                  items: customerList
-                      .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                      .toList(),
-                  onChanged: (value) {
-                    setState(() {
-                      selectedCustomer = value;
-                      items = items
-                          .where(
-                            (e) =>
-                                e.billTo.trim().split('\n').first ==
-                                selectedCustomer,
-                          )
-                          .toList();
-                    });
-                  },
                 ),
               ),
-            ),
-
-          Expanded(
-            child: items.isEmpty
-                ? Center(
-                    child: Text(
-                      "No Reports Found",
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                      ),
+              SizedBox(height: 10),
+              // CUSTOMER DROPDOWN
+              if (selectedFilter == "customer")
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+                  child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey.shade400),
                     ),
-                  )
-                : ListView.separated(
-                    itemCount: items.length,
-                    separatorBuilder: (_, __) => Divider(height: 0),
-                    itemBuilder: (context, index) {
-                      final invoice = items[index];
-                      final companyName = invoice.billTo
-                          .trim()
-                          .split('\n')
-                          .first;
-                      return ListTile(
-                        title: Text(
-                          companyName,
-                          style: TextStyle(
-                            fontSize: fontSize,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        subtitle: Text(
-                          invoice.date,
-                          style: TextStyle(
-                            fontSize: fontSize - 2,
-                            color: Colors.grey[700],
-                          ),
-                        ),
-                        trailing: Text(
-                          "${invoice.currencySymbol ?? '\$'} ${invoice.total}",
-                          style: TextStyle(
-                            fontSize: fontSize,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF009A75),
-                          ),
-                        ),
-                      );
-                    },
+                    child: DropdownButton<String>(
+                      isExpanded: true,
+                      dropdownColor: Colors.white,
+                      underline: SizedBox(),
+                      hint: Text("Select Customer"),
+                      value: selectedCustomer,
+                      items: customerList
+                          .map(
+                            (c) => DropdownMenuItem(value: c, child: Text(c)),
+                          )
+                          .toList(),
+                      onChanged: (value) {
+                        setState(() {
+                          selectedCustomer = value;
+
+                          items = allFilteredItems
+                              .where(
+                                (e) =>
+                                    e.billTo.trim().split('\n').first ==
+                                    selectedCustomer,
+                              )
+                              .toList();
+                        });
+                      },
+                    ),
                   ),
+                ),
+
+              Expanded(
+                child: items.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.insert_drive_file_outlined,
+                              size: 72,
+                              color: Colors.grey.shade400,
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              "No Reports Found",
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.grey.shade800,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              "Try changing filters or date range",
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey.shade600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    : MasonryGridView.count(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        crossAxisCount: isMobile
+                            ? 1
+                            : isTablet
+                            ? 2
+                            : 3,
+                        mainAxisSpacing: 0,
+                        crossAxisSpacing: 0,
+                        itemCount: items.length,
+                        itemBuilder: (context, index) {
+                          final invoice = items[index];
+                          final companyName = invoice.billTo
+                              .trim()
+                              .split('\n')
+                              .first;
+
+                          return Column(
+                            children: [
+                              ListTile(
+                                dense: true,
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                ),
+                                title: Text(
+                                  companyName,
+                                  style: TextStyle(
+                                    fontSize: fontSize,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                subtitle: Text(
+                                  invoice.date,
+                                  style: TextStyle(
+                                    fontSize: fontSize - 2,
+                                    color: Colors.grey[700],
+                                  ),
+                                ),
+                                trailing: Text(
+                                  "${invoice.currencySymbol ?? '\$'} ${invoice.total.toStringAsFixed(2)}",
+                                  style: TextStyle(
+                                    fontSize: fontSize,
+                                    fontWeight: FontWeight.w600,
+                                    color: const Color(0xFF009A75),
+                                  ),
+                                ),
+                              ),
+                              const Divider(height: 0),
+                            ],
+                          );
+                        },
+                      ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 

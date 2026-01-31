@@ -505,7 +505,9 @@ class PdfGenerator4 {
                 "$currency${toDouble(invoice.subtotal).toStringAsFixed(2)}",
               ),
               _totalRow(
-                "Discount",
+                invoice.discountType == 'percent'
+                    ? "Discount (${invoice.discount}%) : "
+                    : "Discount : ",
                 "$currency${toDouble(invoice.discountAmount).toStringAsFixed(2)}",
               ),
               _totalRow(
