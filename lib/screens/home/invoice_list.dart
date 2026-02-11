@@ -13,11 +13,11 @@ import 'package:invoice/pdf_templates/4_elegant.dart';
 import 'package:invoice/pdf_templates/5_attractive.dart';
 import 'package:invoice/pdf_templates/6_beautiful.dart';
 import 'package:invoice/screens/forms/invoice_form.dart';
+import 'package:invoice/screens/home/pdf_preview.dart';
 import 'package:invoice/screens/home/rate_us_dialog.dart';
 import 'package:invoice/widgets/buttons/custom_dialog.dart';
 import 'package:invoice/widgets/buttons/custom_iconbutton.dart';
 import 'package:invoice/widgets/layout/drawer.dart';
-import 'package:open_filex/open_filex.dart';
 
 /// ---------------------------
 /// Responsive helper (local)
@@ -90,7 +90,7 @@ class _InvoiceListPageState extends State<InvoiceListPage> {
           dueDate = invoice.dueDate as DateTime;
         } else if (invoice.dueDate is String) {
           String dateStr = invoice.dueDate as String;
-          if (RegExp(r'^\d{2}-\d{2}-\d{4}$').hasMatch(dateStr)) {
+          if (RegExp(r'^d{2}-d{2}-d{4}\$').hasMatch(dateStr)) {
             final parts = dateStr.split('-');
             dueDate = DateTime(
               int.parse(parts[2]),
@@ -121,7 +121,7 @@ class _InvoiceListPageState extends State<InvoiceListPage> {
         if (value is DateTime) return value;
 
         final str = value.toString();
-        if (RegExp(r'^\d{2}-\d{2}-\d{4}$').hasMatch(str)) {
+        if (RegExp(r'^d{2}-d{2}-d{4}\$').hasMatch(str)) {
           final parts = str.split('-');
           return DateTime(
             int.parse(parts[2]),
@@ -165,7 +165,7 @@ class _InvoiceListPageState extends State<InvoiceListPage> {
     // Show rating popup after 3 invoices AND only if user has not rated
     if (invoices.length >= 3 && !hasRated) {
       await showRateUsDialog(context, (rating) {
-        print("User rating: $rating");
+        print("User rating: \$rating");
 
         if (rating > 0) {
           AppData().markUserRated(); // save inside InvoiceModel
@@ -176,7 +176,7 @@ class _InvoiceListPageState extends State<InvoiceListPage> {
     // Restrict free plan
     if (!isPurchase && invoices.length >= 10) {
       showLimitDialog(
-        "You can create only 10 invoices in Free plan.\nUpgrade to create unlimited invoices.",
+        "You can create only 10 invoices in Free plan.\\nUpgrade to create unlimited invoices.",
       );
       return;
     }
@@ -207,7 +207,7 @@ class _InvoiceListPageState extends State<InvoiceListPage> {
       context: context,
       title: "Delete Invoice",
       message:
-          "Are you sure you want to permanently delete invoice ${invoice.invoiceNo}? This action cannot be undone.",
+          "Are you sure you want to permanently delete invoice \${invoice.invoiceNo}? This action cannot be undone.",
       icon: Icons.warning_amber_rounded,
       iconColor: Colors.red,
       btn3: "Delete",
@@ -248,7 +248,6 @@ class _InvoiceListPageState extends State<InvoiceListPage> {
       File? file;
       switch (template) {
         case "Simple":
-          print("BANK ACCOUNTS: ${AppData().bankAccounts}");
           file = await PdfGenerator1.generateSimpleTemplates(invoice);
           break;
         case "Classic":
@@ -283,13 +282,16 @@ class _InvoiceListPageState extends State<InvoiceListPage> {
         return;
       }
 
-      await OpenFilex.open(file.path);
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => PdfPreviewScreen(file: file!)),
+      );
     } catch (e, st) {
       // Show simple readable error
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text("Error generating PDF: $e")));
-      debugPrint("PDF error: $e\n$st");
+      ).showSnackBar(SnackBar(content: Text("Error generating PDF: \$e")));
+      debugPrint("PDF error: \$e\\n\$st");
     }
   }
 
@@ -408,7 +410,7 @@ class _InvoiceListPageState extends State<InvoiceListPage> {
                   Text(
                     selectedStatus == Status.all
                         ? "No invoices found. Create one to get started!"
-                        : "No ${selectedStatus.name} invoices match the filter.",
+                        : "No \${selectedStatus.name} invoices match the filter.",
                     style: TextStyle(
                       fontSize: Responsive.scale(context, 16),
                       color: Colors.grey.shade600,
@@ -435,7 +437,7 @@ class _InvoiceListPageState extends State<InvoiceListPage> {
                       final invoice = filteredInvoices[index];
                       final companyName = invoice.billTo
                           .trim()
-                          .split('\n')
+                          .split('\\n')
                           .first;
                       return buildInvoiceCard(
                         context,
@@ -560,7 +562,7 @@ class _InvoiceListPageState extends State<InvoiceListPage> {
                   ),
                   // SizedBox(height: Responsive.scale(context, 6)),
                   Text(
-                    "${invoice.currencySymbol ?? '\$'} ${invoice.total.toStringAsFixed(2)}",
+                    "${invoice.currencySymbol ?? '\$'}${invoice.total.toStringAsFixed(2)}",
                     style: TextStyle(
                       fontSize: Responsive.scale(context, 20),
                       fontWeight: FontWeight.w900,

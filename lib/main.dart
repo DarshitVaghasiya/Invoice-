@@ -57,3 +57,54 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     );
   }
 }
+
+/*import 'dart:io';
+import 'package:flutter/material.dart';
+import 'package:pdfx/pdfx.dart';
+
+class PdfPreviewScreen extends StatefulWidget {
+  final File file;
+
+  const PdfPreviewScreen({super.key, required this.file});
+
+  @override
+  State<PdfPreviewScreen> createState() => _PdfPreviewScreenState();
+}
+
+class _PdfPreviewScreenState extends State<PdfPreviewScreen> {
+  late PdfControllerPinch _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = PdfControllerPinch(
+      document: PdfDocument.openFile(widget.file.path),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.grey.shade200,
+      appBar: AppBar(title: Text(widget.file.path.split('/').last)),
+      body: PdfViewPinch(
+        controller: _controller,
+        builders: PdfViewPinchBuilders<DefaultBuilderOptions>(
+          options: const DefaultBuilderOptions(),
+          documentLoaderBuilder: (_) =>
+              const Center(child: CircularProgressIndicator()),
+          pageLoaderBuilder: (_) =>
+              const Center(child: CircularProgressIndicator()),
+          errorBuilder: (_, error) => Center(child: Text('Error: $error')),
+        ),
+      ),
+    );
+  }
+}
+*/

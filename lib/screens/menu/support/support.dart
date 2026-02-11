@@ -16,8 +16,8 @@ class _SupportState extends State<Support> {
   final GlobalKey<FormState> formKey = GlobalKey<FormState>();
 
   void sendEmail() async {
-    final toEmail = "darshitvaghasiya19@gmail.com";
-    final subject = "Feedback And Help For Invoice App "; // 👈 subject here
+    final toEmail = "podegroups@gmail.com";
+    final subject = "Feedback And Help For Invoice App"; // 👈 subject here
     final desc = descriptionController.text.trim();
 
     final encodedSubject = Uri.encodeComponent(subject);

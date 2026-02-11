@@ -524,7 +524,7 @@ class PdfGenerator2 {
               // 5️⃣ Amount
               _rowCell(
                 "$currency${amt.toStringAsFixed(2)}",
-                align: pw.TextAlign.right,
+                align: pw.TextAlign.center,
               ),
             ],
           );
