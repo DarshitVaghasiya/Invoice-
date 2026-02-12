@@ -1,15 +1,17 @@
 import 'dart:io';
-import 'package:android_intent_plus/android_intent.dart';
 import 'package:flutter/material.dart';
-import 'package:open_filex/open_filex.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:pdfx/pdfx.dart';
 import 'package:share_plus/share_plus.dart';
 
 class PdfPreviewScreen extends StatefulWidget {
   final File file;
+  final bool isQuotation;
 
-  const PdfPreviewScreen({super.key, required this.file});
+  const PdfPreviewScreen({
+    super.key,
+    required this.file,
+    this.isQuotation = false,
+  });
 
   @override
   State<PdfPreviewScreen> createState() => _PdfPreviewScreenState();
@@ -23,6 +25,8 @@ class _PdfPreviewScreenState extends State<PdfPreviewScreen> {
     super.initState();
     _controller = PdfControllerPinch(
       document: PdfDocument.openFile(widget.file.path),
+      initialPage: 1,
+      viewportFraction: 1.0, // 🔥 important
     );
   }
 
@@ -37,7 +41,7 @@ class _PdfPreviewScreenState extends State<PdfPreviewScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Text(widget.file.path.split('/').last),
+        title: Text(widget.isQuotation ? "Quotation.pdf" : "Invoice.pdf"),
         backgroundColor: Colors.white,
       ),
 
@@ -82,9 +86,9 @@ class _PdfPreviewScreenState extends State<PdfPreviewScreen> {
                 await Share.shareXFiles([XFile(widget.file.path)]);
               },
               icon: const Icon(Icons.share_outlined, color: Colors.white),
-              label: const Text(
-                "Share Invoice",
-                style: TextStyle(
+              label: Text(
+                widget.isQuotation ? "Share Quotation" : "Share Invoice",
+                style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
                   color: Colors.white,
@@ -93,31 +97,6 @@ class _PdfPreviewScreenState extends State<PdfPreviewScreen> {
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  PopupMenuItem<String> _menuItem({
-    required IconData icon,
-    required String title,
-    required String value,
-    bool isDanger = false,
-  }) {
-    return PopupMenuItem<String>(
-      value: value,
-      child: Row(
-        children: [
-          Icon(icon, size: 22, color: isDanger ? Colors.red : Colors.black87),
-          const SizedBox(width: 12),
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w500,
-              color: isDanger ? Colors.red : Colors.black87,
-            ),
-          ),
-        ],
       ),
     );
   }

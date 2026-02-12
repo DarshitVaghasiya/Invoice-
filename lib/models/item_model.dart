@@ -4,7 +4,6 @@ class ItemModel {
   TextEditingController desc;
   TextEditingController qty;
   TextEditingController rate;
-
   Map<String, TextEditingController> customControllers = {};
 
   ItemModel({
@@ -12,10 +11,9 @@ class ItemModel {
     required String qty,
     required String rate,
     required List<String> customFields,
-  })  : desc = TextEditingController(text: desc),
-        qty = TextEditingController(text: qty),
-        rate = TextEditingController(text: rate) {
-
+  }) : desc = TextEditingController(text: desc),
+       qty = TextEditingController(text: qty),
+       rate = TextEditingController(text: rate) {
     // CREATE CONTROLLERS FOR CUSTOM FIELDS
     for (var f in customFields) {
       customControllers[f] = TextEditingController();
@@ -26,8 +24,9 @@ class ItemModel {
   //      FROM JSON FIX
   // ---------------------------
   factory ItemModel.fromJson(Map<String, dynamic> json) {
-    final Map<String, dynamic> customData =
-    Map<String, dynamic>.from(json['customData'] ?? {});
+    final Map<String, dynamic> customData = Map<String, dynamic>.from(
+      json['customData'] ?? {},
+    );
 
     final model = ItemModel(
       desc: json['desc'] ?? '',
@@ -55,7 +54,7 @@ class ItemModel {
       "customData": {
         for (var entry in customControllers.entries)
           entry.key: entry.value.text,
-      }
+      },
     };
   }
 }

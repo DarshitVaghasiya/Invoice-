@@ -19,29 +19,6 @@ import 'package:invoice/widgets/buttons/custom_dialog.dart';
 import 'package:invoice/widgets/buttons/custom_iconbutton.dart';
 import 'package:invoice/widgets/layout/drawer.dart';
 
-/// ---------------------------
-/// Responsive helper (local)
-/// ---------------------------
-class Responsive {
-  static bool isMobile(BuildContext context) =>
-      MediaQuery.of(context).size.width < 600;
-
-  static bool isTablet(BuildContext context) =>
-      MediaQuery.of(context).size.width >= 600 &&
-      MediaQuery.of(context).size.width < 1024;
-
-  static bool isDesktop(BuildContext context) =>
-      MediaQuery.of(context).size.width >= 1024;
-
-  /// Scale numeric values based on width buckets
-  static double scale(BuildContext context, double value) {
-    final width = MediaQuery.of(context).size.width;
-    if (width < 600) return value; // mobile: base
-    if (width < 1024) return value * 1.2; // tablet
-    return value * 1.5; // desktop
-  }
-}
-
 enum Status { all, paid, unpaid, overdue }
 
 class InvoiceListPage extends StatefulWidget {
@@ -190,6 +167,17 @@ class _InvoiceListPageState extends State<InvoiceListPage> {
     if (newInvoice != null) _loadData();
   }
 
+  Future<void> _createNewQuotation() async {
+    final newInvoice = await Navigator.push<InvoiceModel>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const InvoiceFormPage(isQuotation: true),
+      ),
+    );
+
+    if (newInvoice != null) _loadData();
+  }
+
   Future<void> _editInvoice(InvoiceModel invoice) async {
     final index = invoices.indexOf(invoice);
     final updatedInvoice = await Navigator.push<InvoiceModel>(
@@ -290,181 +278,240 @@ class _InvoiceListPageState extends State<InvoiceListPage> {
       // Show simple readable error
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text("Error generating PDF: \$e")));
-      debugPrint("PDF error: \$e\\n\$st");
+      ).showSnackBar(SnackBar(content: Text("Error generating PDF: $e")));
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final bool isMobile = Responsive.isMobile(context);
-    final bool isTablet =
-        MediaQuery.of(context).size.width >= 600 &&
-        MediaQuery.of(context).size.width < 1024;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isMobile = constraints.maxWidth < 400;
+        final isTablet =
+            constraints.maxWidth >= 400 && constraints.maxWidth < 1000;
 
-    final double padding = Responsive.scale(context, 18);
-    final int crossAxisCount = isMobile ? 1 : (isTablet ? 2 : 3);
-    final double titleFontSize = isMobile ? 24 : (isTablet ? 28 : 32);
+        final isMobile1 = constraints.maxWidth < 440;
+        final isTablet1 =
+            constraints.maxWidth >= 440 && constraints.maxWidth < 1000;
+        final crossAxisCount = isMobile1
+            ? 1
+            : isTablet1
+            ? 2
+            : 3;
+        final double titleFontSize = isMobile ? 24 : (isTablet ? 28 : 32);
 
-    final filteredInvoices = invoices.where((invoice) {
-      if (selectedFilter == "paid") return invoice.status == "paid";
-      if (selectedFilter == "unpaid") return invoice.status == "unpaid";
-      if (selectedFilter == "overdue") return invoice.status == "overdue";
-      return true;
-    }).toList();
+        final filteredInvoices = invoices.where((invoice) {
+          if (selectedFilter == "paid") return invoice.status == "paid";
+          if (selectedFilter == "unpaid") return invoice.status == "unpaid";
+          if (selectedFilter == "overdue") return invoice.status == "overdue";
+          return true;
+        }).toList();
 
-    return Scaffold(
-      backgroundColor: backgroundColor,
-      appBar: AppBar(
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        centerTitle: true,
-        backgroundColor: backgroundColor,
-        foregroundColor: Colors.black,
-        title: Text(
-          "Dashboard",
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: titleFontSize,
-          ),
-        ),
-        actions: [
-          PopupMenuButton<String>(
-            key: _menuKey,
-            color: Colors.white,
-            tooltip: "Filter invoices",
-            offset: Offset(0, Responsive.scale(context, 45)),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+        return Scaffold(
+          backgroundColor: backgroundColor,
+          appBar: AppBar(
+            elevation: 0,
+            scrolledUnderElevation: 0,
+            centerTitle: true,
+            backgroundColor: backgroundColor,
+            foregroundColor: Colors.black,
+            title: Text(
+              "Dashboard",
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: titleFontSize,
+              ),
             ),
-            onSelected: (value) => _applyFilter(value),
-            itemBuilder: (context) => [
-              const PopupMenuItem(
-                value: "all",
-                child: Row(
-                  children: [
-                    Icon(Icons.list_alt_rounded, color: Colors.black54),
-                    SizedBox(width: 10),
-                    Text("All Invoices"),
-                  ],
+            actions: [
+              PopupMenuButton<String>(
+                key: _menuKey,
+                color: Colors.white,
+                tooltip: "Filter invoices",
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
                 ),
-              ),
-              const PopupMenuItem(
-                value: "paid",
-                child: Row(
-                  children: [
-                    Icon(Icons.check_circle_outline, color: Colors.green),
-                    SizedBox(width: 10),
-                    Text("Paid Invoices"),
-                  ],
-                ),
-              ),
-              const PopupMenuItem(
-                value: "unpaid",
-                child: Row(
-                  children: [
-                    Icon(Icons.cancel_outlined, color: Colors.orange),
-                    SizedBox(width: 10),
-                    Text("Unpaid Invoices"),
-                  ],
-                ),
-              ),
-              const PopupMenuItem(
-                value: "overdue",
-                child: Row(
-                  children: [
-                    Icon(Icons.error_outline, color: Colors.red),
-                    SizedBox(width: 10),
-                    Text("Overdue Invoices"),
-                  ],
-                ),
-              ),
-            ],
-            child: CustomIconButton(
-              label: selectedFilter == "all"
-                  ? "Filter"
-                  : selectedFilter[0].toUpperCase() +
-                        selectedFilter.substring(1),
-              icon: Icons.filter_list_rounded,
-              onTap: () {
-                final dynamic state = _menuKey.currentState;
-                state.showButtonMenu();
-              },
-            ),
-          ),
-          SizedBox(width: Responsive.scale(context, 12)),
-        ],
-      ),
-      drawer: const AppDrawer(),
-      body: filteredInvoices.isEmpty
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.description_outlined,
-                    size: Responsive.scale(context, 80),
-                    color: Colors.grey.shade400,
+                onSelected: (value) => _applyFilter(value),
+                itemBuilder: (context) => [
+                  const PopupMenuItem(
+                    value: "all",
+                    child: Row(
+                      children: [
+                        Icon(Icons.list_alt_rounded, color: Colors.black54),
+                        SizedBox(width: 10),
+                        Text("All Invoices"),
+                      ],
+                    ),
                   ),
-                  SizedBox(height: Responsive.scale(context, 16)),
-                  Text(
-                    selectedStatus == Status.all
-                        ? "No invoices found. Create one to get started!"
-                        : "No \${selectedStatus.name} invoices match the filter.",
-                    style: TextStyle(
-                      fontSize: Responsive.scale(context, 16),
-                      color: Colors.grey.shade600,
+                  const PopupMenuItem(
+                    value: "paid",
+                    child: Row(
+                      children: [
+                        Icon(Icons.check_circle_outline, color: Colors.green),
+                        SizedBox(width: 10),
+                        Text("Paid Invoices"),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuItem(
+                    value: "unpaid",
+                    child: Row(
+                      children: [
+                        Icon(Icons.cancel_outlined, color: Colors.orange),
+                        SizedBox(width: 10),
+                        Text("Unpaid Invoices"),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuItem(
+                    value: "overdue",
+                    child: Row(
+                      children: [
+                        Icon(Icons.error_outline, color: Colors.red),
+                        SizedBox(width: 10),
+                        Text("Overdue Invoices"),
+                      ],
                     ),
                   ),
                 ],
+                child: CustomIconButton(
+                  label: selectedFilter == "all"
+                      ? "Filter"
+                      : selectedFilter[0].toUpperCase() +
+                            selectedFilter.substring(1),
+                  icon: Icons.filter_list_rounded,
+                  onTap: () {
+                    final dynamic state = _menuKey.currentState;
+                    state.showButtonMenu();
+                  },
+                ),
               ),
-            )
-          : SingleChildScrollView(
-              padding: EdgeInsets.symmetric(
-                horizontal: padding,
-                vertical: Responsive.scale(context, 12),
-              ),
-              child: Column(
-                children: [
-                  MasonryGridView.count(
-                    crossAxisCount: crossAxisCount,
-                    crossAxisSpacing: Responsive.scale(context, 10),
-                    mainAxisSpacing: Responsive.scale(context, 20),
-                    physics: const NeverScrollableScrollPhysics(),
-                    shrinkWrap: true,
-                    itemCount: filteredInvoices.length,
-                    itemBuilder: (context, index) {
-                      final invoice = filteredInvoices[index];
-                      final companyName = invoice.billTo
-                          .trim()
-                          .split('\\n')
-                          .first;
-                      return buildInvoiceCard(
-                        context,
-                        invoice,
-                        companyName,
-                        AppData().profile,
-                      );
-                    },
-                  ),
-                  SizedBox(height: Responsive.scale(context, 70)),
-                ],
-              ),
-            ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _createNewInvoice,
-        icon: Icon(Icons.add, size: Responsive.scale(context, 20)),
-        label: Text(
-          "New Invoice",
-          style: TextStyle(
-            fontSize: Responsive.scale(context, 16),
-            fontWeight: FontWeight.bold,
+              SizedBox(width: 12),
+            ],
           ),
-        ),
-        backgroundColor: primaryColor,
-        foregroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      ),
+          drawer: const AppDrawer(),
+          body: filteredInvoices.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.description_outlined,
+                        size: isMobile
+                            ? 70
+                            : isTablet
+                            ? 80
+                            : 85,
+                        color: Colors.grey.shade400,
+                      ),
+                      SizedBox(height: 16),
+                      Text(
+                        selectedStatus == Status.all
+                            ? "No invoices found. Create one to get started!"
+                            : "No ${selectedStatus.name} invoices match the filter.",
+                        style: TextStyle(
+                          fontSize: isMobile
+                              ? 15
+                              : isTablet
+                              ? 18
+                              : 20,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              : SingleChildScrollView(
+                  padding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  child: Column(
+                    children: [
+                      MasonryGridView.count(
+                        crossAxisCount: crossAxisCount,
+                        crossAxisSpacing: 10,
+                        mainAxisSpacing: 20,
+                        physics: const NeverScrollableScrollPhysics(),
+                        shrinkWrap: true,
+                        itemCount: filteredInvoices.length,
+                        itemBuilder: (context, index) {
+                          final invoice = filteredInvoices[index];
+                          final companyName = invoice.billTo
+                              .trim()
+                              .split('\\n')
+                              .first;
+                          return buildInvoiceCard(
+                            context,
+                            invoice,
+                            companyName,
+                            AppData().profile,
+                          );
+                        },
+                      ),
+                      SizedBox(height: 130),
+                    ],
+                  ),
+                ),
+          floatingActionButton: Column(
+            mainAxisSize: MainAxisSize.min, // ⭐ આ જરૂરી છે
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              FloatingActionButton.extended(
+                heroTag: "invoice_btn",
+                onPressed: _createNewInvoice,
+                extendedPadding: EdgeInsets.symmetric(horizontal: 16),
+                icon: Icon(
+                  Icons.add,
+                  size: isMobile
+                      ? 18
+                      : isTablet
+                      ? 20
+                      : 22,
+                ),
+                label: Text(
+                  "New Invoice",
+                  style: TextStyle(
+                    fontSize: isMobile
+                        ? 14
+                        : isTablet
+                        ? 16
+                        : 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                backgroundColor: primaryColor,
+                foregroundColor: Colors.white,
+              ),
+
+              SizedBox(height: isMobile ? 12 : 14),
+
+              FloatingActionButton.extended(
+                heroTag: "quick_btn",
+                onPressed: _createNewQuotation,
+                icon: Icon(
+                  Icons.add,
+                  size: isMobile
+                      ? 18
+                      : isTablet
+                      ? 20
+                      : 22,
+                ),
+                label: Text(
+                  "New Quotation",
+                  style: TextStyle(
+                    fontSize: isMobile
+                        ? 14
+                        : isTablet
+                        ? 16
+                        : 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+
+                backgroundColor: primaryColor,
+                foregroundColor: Colors.white,
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -474,329 +521,344 @@ class _InvoiceListPageState extends State<InvoiceListPage> {
     String companyName,
     ProfileModel? profile,
   ) {
-    final bool isPaid = invoice.status == 'paid';
-    final bool isOverdue = invoice.status == 'overdue';
-    final Color statusTextColor = isPaid
-        ? Colors.green
-        : (isOverdue ? Colors.red : Colors.orange);
-    final Color statusBackgroundColor = statusTextColor.withOpacity(0.15);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isMobile = constraints.maxWidth < 400;
+        final isTablet =
+            constraints.maxWidth >= 400 && constraints.maxWidth < 1000;
 
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isMobile = Responsive.isMobile(context);
-    final isTablet =
-        MediaQuery.of(context).size.width >= 600 &&
-        MediaQuery.of(context).size.width < 1024;
+        final bool isPaid = invoice.status == 'paid';
+        final bool isOverdue = invoice.status == 'overdue';
+        final Color statusTextColor = isPaid
+            ? Colors.green
+            : (isOverdue ? Colors.red : Colors.orange);
+        final Color statusBackgroundColor = statusTextColor.withOpacity(0.15);
 
-    final double textWidth = isMobile
-        ? screenWidth * 0.48
-        : isTablet
-        ? screenWidth * 0.30
-        : screenWidth * 0.18;
+        final screenWidth = MediaQuery.of(context).size.width;
 
-    return Container(
-      margin: EdgeInsets.symmetric(horizontal: 4),
-      padding: EdgeInsets.all(Responsive.scale(context, 16)),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.07),
-            blurRadius: 8,
-            offset: Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header Row
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                "INV: ${invoice.invoiceNo}",
-                style: TextStyle(
-                  fontWeight: FontWeight.w800,
-                  fontSize: Responsive.scale(context, 15),
-                ),
-              ),
-              Container(
-                padding: EdgeInsets.symmetric(
-                  horizontal: Responsive.scale(context, 10),
-                  vertical: Responsive.scale(context, 3),
-                ),
-                decoration: BoxDecoration(
-                  color: statusBackgroundColor,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  invoice.status.toUpperCase(),
-                  style: TextStyle(
-                    color: statusTextColor,
-                    fontSize: Responsive.scale(context, 11.5),
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.5,
-                  ),
-                ),
+        final double textWidth = isMobile
+            ? screenWidth * 0.48
+            : isTablet
+            ? screenWidth * 0.30
+            : screenWidth * 0.18;
+
+        return Container(
+          margin: EdgeInsets.symmetric(horizontal: 4),
+          padding: EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.07),
+                blurRadius: 8,
+                offset: Offset(0, 3),
               ),
             ],
           ),
-
-          SizedBox(height: Responsive.scale(context, 10)),
-
-          // Amount + Dates Row
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              // Header Row
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    "Amount Due",
+                    "INV: ${invoice.invoiceNo}",
                     style: TextStyle(
-                      fontSize: Responsive.scale(context, 13),
-                      fontWeight: FontWeight.w600,
-                      color: Colors.grey.shade600,
+                      fontWeight: FontWeight.w800,
+                      fontSize: isMobile
+                          ? 13
+                          : isTablet
+                          ? 17
+                          : 18,
                     ),
                   ),
-                  // SizedBox(height: Responsive.scale(context, 6)),
-                  Text(
-                    "${invoice.currencySymbol ?? '\$'}${invoice.total.toStringAsFixed(2)}",
-                    style: TextStyle(
-                      fontSize: Responsive.scale(context, 20),
-                      fontWeight: FontWeight.w900,
-                      color: Color(0xFF0079D0),
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: statusBackgroundColor,
+                      borderRadius: BorderRadius.circular(20),
                     ),
-                  ),
-                ],
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    "Issued Date",
-                    style: TextStyle(
-                      fontSize: Responsive.scale(context, 13),
-                      fontWeight: FontWeight.w600,
-                      color: Colors.grey.shade600,
-                    ),
-                  ),
-                  SizedBox(height: Responsive.scale(context, 6)),
-                  Text(
-                    invoice.date.toString(),
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: Responsive.scale(context, 13.5),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-
-          SizedBox(height: Responsive.scale(context, 5)),
-
-          // Client + Due Date Row
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "Client / Company",
+                    child: Text(
+                      invoice.status.toUpperCase(),
                       style: TextStyle(
-                        fontSize: Responsive.scale(context, 13),
-                        color: Colors.grey.shade600,
-                        fontWeight: FontWeight.w600,
+                        color: statusTextColor,
+                        fontSize: isMobile
+                            ? 10
+                            : isTablet
+                            ? 13
+                            : 14,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
                       ),
                     ),
-                    SizedBox(
-                      width: textWidth,
-                      child: Text(
-                        companyName,
+                  ),
+                ],
+              ),
+
+              SizedBox(height: 10),
+
+              // Amount + Dates Row
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "Amount Due",
+                        style: TextStyle(
+                          fontSize: isMobile ? 12 : 15,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                      SizedBox(height: 3),
+                      Text(
+                        "${invoice.currencySymbol ?? '\$'}${invoice.total.toStringAsFixed(2)}",
+                        style: TextStyle(
+                          fontSize: isMobile
+                              ? 18
+                              : isTablet
+                              ? 22
+                              : 24,
+                          fontWeight: FontWeight.w900,
+                          color: Color(0xFF0079D0),
+                        ),
+                      ),
+                    ],
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        "Issued Date",
+                        style: TextStyle(
+                          fontSize: isMobile ? 12 : 15,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                      SizedBox(height: 3),
+                      Text(
+                        invoice.date.toString(),
                         style: TextStyle(
                           fontWeight: FontWeight.w700,
-                          fontSize: Responsive.scale(context, 14),
+                          fontSize: isMobile ? 13 : 15,
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                       ),
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
+                ],
               ),
-              SizedBox(width: Responsive.scale(context, 6)),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
+
+              SizedBox(height: 5),
+
+              // Client + Due Date Row
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    "Due Date",
-                    style: TextStyle(
-                      fontSize: Responsive.scale(context, 13),
-                      color: Colors.grey.shade600,
-                      fontWeight: FontWeight.w600,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "Client / Company",
+                          style: TextStyle(
+                            fontSize: isMobile ? 12 : 15,
+                            color: Colors.grey.shade600,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        SizedBox(height: 3),
+                        SizedBox(
+                          width: textWidth,
+                          child: Text(
+                            companyName,
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: isMobile ? 13 : 15,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  SizedBox(height: Responsive.scale(context, 6)),
-                  Text(
-                    invoice.dueDate.toString(),
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: Responsive.scale(context, 13.5),
-                      color: isOverdue ? Colors.red : Colors.black,
+                  SizedBox(width: 5),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        "Due Date",
+                        style: TextStyle(
+                          fontSize: isMobile ? 12 : 15,
+                          color: Colors.grey.shade600,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      SizedBox(height: 3),
+                      Text(
+                        invoice.dueDate.toString(),
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: isMobile ? 13 : 15,
+                          color: isOverdue ? Colors.red : Colors.black,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+
+              Divider(color: Colors.grey.shade300, height: 20),
+
+              // Buttons Row
+              Row(
+                children: [
+                  // PAY
+                  Expanded(
+                    child: IgnorePointer(
+                      ignoring: isPaid,
+                      child: Opacity(
+                        opacity: isPaid ? 0.5 : 1,
+                        child: CustomIconButton(
+                          label: "Pay",
+                          icon: Icons.check_circle_outline,
+                          fontSize: isMobile ? 12 : 15,
+                          iconSize: isMobile ? 20 : 25,
+                          backgroundColor: isPaid
+                              ? Colors.grey.shade200
+                              : const Color(0xFFE6F5F1),
+                          textColor: isPaid
+                              ? Colors.grey
+                              : const Color(0xFF009A75),
+                          padding: EdgeInsets.symmetric(vertical: 8),
+                          onTap: () async {
+                            if (isPaid) return;
+                            final confirmed = await showDialog<bool>(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                backgroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                title: Text(
+                                  'Confirm Payment',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: isMobile ? 18 : 22,
+                                    color: Colors.black87,
+                                  ),
+                                ),
+                                content: Text(
+                                  'Are you sure you want to mark this invoice as paid?',
+                                  textAlign: TextAlign.left,
+                                  style: TextStyle(
+                                    fontSize: isMobile ? 13 : 15,
+                                    height: 1.4,
+                                    color: Colors.black,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                actions: [
+                                  CustomIconButton(
+                                    label: "No",
+                                    borderColor: Colors.red,
+                                    textColor: Colors.red,
+                                    onTap: () => Navigator.pop(context, false),
+                                  ),
+                                  CustomIconButton(
+                                    label: "Yes",
+                                    borderColor: Colors.green,
+                                    textColor: Colors.green,
+                                    onTap: () => Navigator.pop(context, true),
+                                  ),
+                                ],
+                              ),
+                            );
+
+                            if (confirmed == true) {
+                              _paymentStatus(invoice);
+                            }
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: 6),
+
+                  // VIEW
+                  Expanded(
+                    child: CustomIconButton(
+                      label: "PDF",
+                      icon: Icons.visibility_outlined,
+                      backgroundColor: Colors.blue.shade50,
+                      fontSize: isMobile ? 12 : 15,
+                      iconSize: isMobile ? 20 : 25,
+                      textColor: Colors.blue,
+                      padding: EdgeInsets.symmetric(vertical: 8),
+                      onTap: () => _generateAndOpenPdf(invoice, profile),
+                    ),
+                  ),
+
+                  SizedBox(width: 6),
+
+                  // EDIT
+                  Expanded(
+                    child: IgnorePointer(
+                      ignoring: isPaid,
+                      child: Opacity(
+                        opacity: isPaid ? 0.5 : 1,
+                        child: CustomIconButton(
+                          label: "Edit",
+                          icon: Icons.edit_outlined,
+                          fontSize: isMobile ? 12 : 15,
+                          iconSize: isMobile ? 20 : 25,
+                          backgroundColor: isPaid
+                              ? Colors.grey.shade200
+                              : unpaidColor.withOpacity(0.15),
+                          textColor: isPaid
+                              ? Colors.grey.shade500
+                              : unpaidColor,
+                          padding: EdgeInsets.symmetric(vertical: 8),
+                          onTap: () => _editInvoice(invoice),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  SizedBox(width: 6),
+
+                  // DELETE
+                  Expanded(
+                    child: IgnorePointer(
+                      ignoring: isPaid,
+                      child: Opacity(
+                        opacity: isPaid ? 0.5 : 1,
+                        child: CustomIconButton(
+                          label: "Delete",
+                          icon: Icons.delete_outline_rounded,
+                          fontSize: isMobile ? 12 : 15,
+                          iconSize: isMobile ? 20 : 25,
+                          backgroundColor: isPaid
+                              ? Colors.grey.shade200
+                              : Colors.red.shade50,
+                          textColor: isPaid ? Colors.grey : Colors.red,
+                          padding: EdgeInsets.symmetric(vertical: 8),
+                          onTap: () => _deleteInvoice(invoice),
+                        ),
+                      ),
                     ),
                   ),
                 ],
               ),
             ],
           ),
-
-          Divider(
-            color: Colors.grey.shade300,
-            height: Responsive.scale(context, 20),
-          ),
-
-          // Buttons Row
-          Row(
-            children: [
-              // PAY
-              Expanded(
-                child: IgnorePointer(
-                  ignoring: isPaid,
-                  child: Opacity(
-                    opacity: isPaid ? 0.5 : 1,
-                    child: CustomIconButton(
-                      label: "Pay",
-                      icon: Icons.check_circle_outline,
-                      backgroundColor: isPaid
-                          ? Colors.grey.shade200
-                          : const Color(0xFFE6F5F1),
-                      textColor: isPaid ? Colors.grey : const Color(0xFF009A75),
-                      padding: EdgeInsets.symmetric(
-                        vertical: Responsive.scale(context, 8),
-                      ),
-                      onTap: () async {
-                        if (isPaid) return;
-                        final confirmed = await showDialog<bool>(
-                          context: context,
-                          builder: (context) => AlertDialog(
-                            backgroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            title: Text(
-                              'Confirm Payment',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w900,
-                                fontSize: Responsive.scale(context, 20),
-                                color: Colors.black87,
-                              ),
-                            ),
-                            content: Text(
-                              'Are you sure you want to mark this invoice as paid?',
-                              textAlign: TextAlign.left,
-                              style: TextStyle(
-                                fontSize: Responsive.scale(context, 15),
-                                height: 1.4,
-                                color: Colors.black,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            actions: [
-                              CustomIconButton(
-                                label: "No",
-                                borderColor: Colors.red,
-                                textColor: Colors.red,
-                                onTap: () => Navigator.pop(context, false),
-                              ),
-                              CustomIconButton(
-                                label: "Yes",
-                                borderColor: Colors.green,
-                                textColor: Colors.green,
-                                onTap: () => Navigator.pop(context, true),
-                              ),
-                            ],
-                          ),
-                        );
-
-                        if (confirmed == true) {
-                          _paymentStatus(invoice);
-                        }
-                      },
-                    ),
-                  ),
-                ),
-              ),
-              SizedBox(width: Responsive.scale(context, 6)),
-
-              // VIEW
-              Expanded(
-                child: CustomIconButton(
-                  label: "PDF",
-                  icon: Icons.visibility_outlined,
-                  backgroundColor: Colors.blue.shade50,
-                  textColor: Colors.blue,
-                  padding: EdgeInsets.symmetric(
-                    vertical: Responsive.scale(context, 8),
-                  ),
-                  onTap: () => _generateAndOpenPdf(invoice, profile),
-                ),
-              ),
-
-              SizedBox(width: Responsive.scale(context, 6)),
-
-              // EDIT
-              Expanded(
-                child: IgnorePointer(
-                  ignoring: isPaid,
-                  child: Opacity(
-                    opacity: isPaid ? 0.5 : 1,
-                    child: CustomIconButton(
-                      label: "Edit",
-                      icon: Icons.edit_outlined,
-                      backgroundColor: isPaid
-                          ? Colors.grey.shade200
-                          : unpaidColor.withOpacity(0.15),
-                      textColor: isPaid ? Colors.grey.shade500 : unpaidColor,
-                      padding: EdgeInsets.symmetric(
-                        vertical: Responsive.scale(context, 8),
-                      ),
-                      onTap: () => _editInvoice(invoice),
-                    ),
-                  ),
-                ),
-              ),
-
-              SizedBox(width: Responsive.scale(context, 6)),
-
-              // DELETE
-              Expanded(
-                child: IgnorePointer(
-                  ignoring: isPaid,
-                  child: Opacity(
-                    opacity: isPaid ? 0.5 : 1,
-                    child: CustomIconButton(
-                      label: "Delete",
-                      icon: Icons.delete_outline_rounded,
-                      backgroundColor: isPaid
-                          ? Colors.grey.shade200
-                          : Colors.red.shade50,
-                      textColor: isPaid ? Colors.grey : Colors.red,
-                      padding: EdgeInsets.symmetric(
-                        vertical: Responsive.scale(context, 8),
-                      ),
-                      onTap: () => _deleteInvoice(invoice),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

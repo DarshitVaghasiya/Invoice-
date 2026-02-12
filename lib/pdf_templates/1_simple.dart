@@ -28,28 +28,6 @@ class PdfGenerator1 {
     ];
   }
 
-  static double getCustomerPendingBalance(InvoiceModel currentInvoice) {
-    final invoices = AppData().invoices;
-
-    double pendingTotal = 0;
-
-    for (final inv in invoices) {
-      if (inv.customerId == currentInvoice.customerId) {
-        final total = double.tryParse(inv.total.toString()) ?? 0;
-
-        final bool isPaid = inv.status.toLowerCase() == 'paid';
-
-        final balance = isPaid ? 0 : total;
-
-        if (balance > 0) {
-          pendingTotal += balance;
-        }
-      }
-    }
-
-    return pendingTotal;
-  }
-
   static Future<File?> generateSimpleTemplates(InvoiceModel invoice) async {
     final baseFont = pw.Font.ttf(
       await rootBundle.load("assets/Fonts/Roboto-Regular.ttf"),
@@ -80,8 +58,12 @@ class PdfGenerator1 {
       ),
     );
 
-    double _toDouble(dynamic val) =>
-        double.tryParse(val?.toString() ?? '') ?? 0;
+    double toDouble(dynamic val) => double.tryParse(val?.toString() ?? '') ?? 0;
+
+    final double total = toDouble(invoice.total);
+    final bool isPaid = invoice.status.toLowerCase() == 'paid';
+
+    final double balanceDue = isPaid ? 0 : total;
 
     // List<BankAccountModel>
     BankAccountModel? bankAccount;
@@ -104,8 +86,6 @@ class PdfGenerator1 {
     final pw.MemoryImage? signatureImage = SignatureHelper.fromBase64(
       settings.signatureBase64,
     );
-
-    final double pendingBalance = getCustomerPendingBalance(invoice);
 
     pdf.addPage(
       pw.MultiPage(
@@ -333,7 +313,7 @@ class PdfGenerator1 {
                             ),
                           ),
                           pw.Text(
-                            "$currencySymbol ${pendingBalance.toStringAsFixed(2)}",
+                            "$currencySymbol ${balanceDue.toStringAsFixed(2)}",
                             style: pw.TextStyle(
                               fontWeight: pw.FontWeight.bold,
                               fontSize: 14,
@@ -356,9 +336,9 @@ class PdfGenerator1 {
           widgets.add(pw.SizedBox(height: 70));
 
           // 🔹 Totals
-          final discount = _toDouble(invoice.discount);
-          final tax = _toDouble(invoice.tax);
-          final shipping = _toDouble(invoice.shipping);
+          final discount = toDouble(invoice.discount);
+          final tax = toDouble(invoice.tax);
+          final shipping = toDouble(invoice.shipping);
 
           widgets.add(
             pw.Align(
@@ -390,7 +370,7 @@ class PdfGenerator1 {
                               ),
                             ),
                             pw.Text(
-                              "$currencySymbol ${_toDouble(invoice.subtotal).toStringAsFixed(2)}",
+                              "$currencySymbol ${toDouble(invoice.subtotal).toStringAsFixed(2)}",
                               style: pw.TextStyle(
                                 fontSize: 12,
                                 fontWeight: pw.FontWeight.bold,
@@ -420,7 +400,7 @@ class PdfGenerator1 {
                         ),
 
                         pw.Text(
-                          "$currencySymbol ${_toDouble(invoice.discountAmount).toStringAsFixed(2)}",
+                          "$currencySymbol ${toDouble(invoice.discountAmount).toStringAsFixed(2)}",
                           style: pw.TextStyle(fontSize: 12),
                         ),
                       ],
@@ -441,7 +421,7 @@ class PdfGenerator1 {
                           ),
                         ),
                         pw.Text(
-                          "$currencySymbol ${_toDouble(invoice.taxAmount).toStringAsFixed(2)}",
+                          "$currencySymbol ${toDouble(invoice.taxAmount).toStringAsFixed(2)}",
                           style: pw.TextStyle(fontSize: 12),
                         ),
                       ],
@@ -462,7 +442,7 @@ class PdfGenerator1 {
                           ),
                         ),
                         pw.Text(
-                          "$currencySymbol ${_toDouble(invoice.shipping).toStringAsFixed(2)}",
+                          "$currencySymbol ${toDouble(invoice.shipping).toStringAsFixed(2)}",
                           style: pw.TextStyle(fontSize: 12),
                         ),
                       ],
@@ -484,7 +464,7 @@ class PdfGenerator1 {
                         ),
                       ),
                       pw.Text(
-                        "$currencySymbol ${_toDouble(invoice.total).toStringAsFixed(2)}",
+                        "$currencySymbol ${toDouble(invoice.total).toStringAsFixed(2)}",
                         style: pw.TextStyle(
                           fontSize: 14,
                           fontWeight: pw.FontWeight.bold,
