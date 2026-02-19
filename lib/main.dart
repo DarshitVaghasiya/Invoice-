@@ -1,15 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:invoice/Screens/Menu/Profile/profile_form.dart';
 import 'package:invoice/screens/home/invoice_list.dart';
+import 'package:invoice/widgets/buttons/custom_tabbar.dart';
+import 'package:media_store_plus/media_store_plus.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'Global Veriables/global_veriable.dart';
 import 'app_data/app_data.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Permission.storage.request();
+
+  await MediaStore.ensureInitialized();
+  MediaStore.appFolder = "eZInvoice";
 
   final prefs = await SharedPreferences.getInstance();
-  isPurchase = prefs.getBool("isPurchase") ?? false;
+  isPurchase = prefs.getBool("isPurchase") ?? true;
 
   await AppData().loadAllData();
   final profile = AppData().profile;
@@ -53,58 +60,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       debugShowCheckedModeBanner: false,
       home: widget.showProfileForm == true
           ? const InvoiceProfileForm()
-          : const InvoiceListPage(),
+          : const InvoiceHomeTabPage(),
     );
   }
 }
-
-/*import 'dart:io';
-import 'package:flutter/material.dart';
-import 'package:pdfx/pdfx.dart';
-
-class PdfPreviewScreen extends StatefulWidget {
-  final File file;
-
-  const PdfPreviewScreen({super.key, required this.file});
-
-  @override
-  State<PdfPreviewScreen> createState() => _PdfPreviewScreenState();
-}
-
-class _PdfPreviewScreenState extends State<PdfPreviewScreen> {
-  late PdfControllerPinch _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = PdfControllerPinch(
-      document: PdfDocument.openFile(widget.file.path),
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.grey.shade200,
-      appBar: AppBar(title: Text(widget.file.path.split('/').last)),
-      body: PdfViewPinch(
-        controller: _controller,
-        builders: PdfViewPinchBuilders<DefaultBuilderOptions>(
-          options: const DefaultBuilderOptions(),
-          documentLoaderBuilder: (_) =>
-              const Center(child: CircularProgressIndicator()),
-          pageLoaderBuilder: (_) =>
-              const Center(child: CircularProgressIndicator()),
-          errorBuilder: (_, error) => Center(child: Text('Error: $error')),
-        ),
-      ),
-    );
-  }
-}
-*/

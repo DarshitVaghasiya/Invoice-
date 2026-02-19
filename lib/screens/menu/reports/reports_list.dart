@@ -212,7 +212,6 @@ class _ReportsListState extends State<ReportsList> {
           backgroundColor: Color(0xFFF0F2F5),
           appBar: AppBar(
             elevation: 0,
-            centerTitle: true,
             backgroundColor: Color(0xFFF0F2F5),
             foregroundColor: Colors.black,
             scrolledUnderElevation: 0,
@@ -308,14 +307,14 @@ class _ReportsListState extends State<ReportsList> {
                           Text(
                             "$reportType Report",
                             style: TextStyle(
-                              color: Colors.purple,
+                              color: Color(0xFF982014),
                               fontWeight: FontWeight.w600,
                               fontSize: fontSize,
                             ),
                           ),
                           const Icon(
                             Icons.keyboard_arrow_down_rounded,
-                            color: Colors.purple,
+                            color: Color(0xFF982014),
                           ),
                         ],
                       ),
@@ -343,7 +342,7 @@ class _ReportsListState extends State<ReportsList> {
                       ],
                       child: const Icon(
                         Icons.tune_rounded,
-                        color: Colors.purple,
+                        color: Color(0xFF982014),
                         size: 26,
                       ),
                     ),

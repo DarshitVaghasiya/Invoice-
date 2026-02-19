@@ -41,7 +41,6 @@ class _SupportState extends State<Support> {
       backgroundColor: const Color(0xFFF0F2F5),
       appBar: AppBar(
         elevation: 0,
-        centerTitle: true,
         backgroundColor: const Color(0xFFF0F2F5),
         foregroundColor: Colors.black,
         title: const Text(

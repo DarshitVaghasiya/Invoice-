@@ -4,6 +4,7 @@ import 'package:invoice/models/bank_account_model.dart';
 import 'package:invoice/models/customer_model.dart';
 import 'package:invoice/models/invoice_model.dart';
 import 'package:invoice/models/profile_model.dart';
+import 'package:invoice/models/quotation_model.dart';
 import 'package:invoice/models/settings_model.dart';
 
 class AppData {
@@ -15,6 +16,7 @@ class AppData {
 
   List<CustomerModel> customers = [];
   List<InvoiceModel> invoices = [];
+  List<QuotationModel> quotations = [];
   List<AddItemModel> items = [];
   int lastInvoiceNumber = 0;
   ProfileModel? profile;
@@ -43,6 +45,7 @@ class AppData {
     final all = await InvoiceStorage.loadAll();
     customers = all["customers"];
     invoices = all["invoices"];
+    quotations = all["quotations"];
     items = all["items"];
     profile = all["profile"];
 
@@ -61,7 +64,6 @@ class AppData {
     } else {
       bankAccounts = [];
     }
-
 
     final settingsData = all["settings"];
     if (settingsData is SettingsModel) {
@@ -143,6 +145,7 @@ class AppData {
     await InvoiceStorage.saveAll(
       customers: customers,
       invoices: invoices,
+      quotation: quotations,
       items: items,
       profile: profile,
       settings: settings,

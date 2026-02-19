@@ -17,25 +17,19 @@ import 'package:invoice/screens/home/pdf_preview.dart';
 import 'package:invoice/screens/home/rate_us_dialog.dart';
 import 'package:invoice/widgets/buttons/custom_dialog.dart';
 import 'package:invoice/widgets/buttons/custom_iconbutton.dart';
-import 'package:invoice/widgets/layout/drawer.dart';
-
-enum Status { all, paid, unpaid, overdue }
 
 class InvoiceListPage extends StatefulWidget {
-  const InvoiceListPage({super.key});
+  final String selectedFilter;
+
+  const InvoiceListPage({super.key, required this.selectedFilter});
 
   @override
   State<InvoiceListPage> createState() => _InvoiceListPageState();
 }
 
 class _InvoiceListPageState extends State<InvoiceListPage> {
-  final GlobalKey _menuKey = GlobalKey();
-
   List<InvoiceModel> invoices = [];
   List<CustomerModel> customers = [];
-
-  Status selectedStatus = Status.all;
-  String selectedFilter = "all";
 
   static const Color primaryColor = Color(0xFF009A75);
   static const Color unpaidColor = Color(0xFFFF9800);
@@ -48,12 +42,13 @@ class _InvoiceListPageState extends State<InvoiceListPage> {
   }
 
   Future<void> _loadData() async {
+    final storedList = AppData().invoices;
+
     setState(() {
-      invoices = List<InvoiceModel>.from(AppData().invoices);
-      customers = List<CustomerModel>.from(AppData().customers);
+      invoices = storedList.reversed.toList();
     });
 
-    final now = DateTime.now();
+    /*    final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
 
     for (var i = 0; i < invoices.length; i++) {
@@ -67,7 +62,7 @@ class _InvoiceListPageState extends State<InvoiceListPage> {
           dueDate = invoice.dueDate as DateTime;
         } else if (invoice.dueDate is String) {
           String dateStr = invoice.dueDate as String;
-          if (RegExp(r'^d{2}-d{2}-d{4}\$').hasMatch(dateStr)) {
+          if (RegExp(r'^\d{2}-\d{2}-\d{4}$').hasMatch(dateStr)) {
             final parts = dateStr.split('-');
             dueDate = DateTime(
               int.parse(parts[2]),
@@ -94,11 +89,32 @@ class _InvoiceListPageState extends State<InvoiceListPage> {
 
     // Sort invoices by issue date (latest first)
     invoices.sort((a, b) {
+      int statusPriority(String status) {
+        switch (status) {
+          case 'overdue':
+            return 0; // Highest priority
+          case 'unpaid':
+            return 1;
+          case 'paid':
+            return 2;
+          default:
+            return 3;
+        }
+      }
+
+      // First compare by status priority
+      final statusCompare = statusPriority(
+        a.status,
+      ).compareTo(statusPriority(b.status));
+
+      if (statusCompare != 0) return statusCompare;
+
+      // If same status → sort by latest date
       DateTime parseDate(dynamic value) {
         if (value is DateTime) return value;
 
         final str = value.toString();
-        if (RegExp(r'^d{2}-d{2}-d{4}\$').hasMatch(str)) {
+        if (RegExp(r'^\d{2}-\d{2}-\d{4}$').hasMatch(str)) {
           final parts = str.split('-');
           return DateTime(
             int.parse(parts[2]),
@@ -112,28 +128,13 @@ class _InvoiceListPageState extends State<InvoiceListPage> {
       final dateA = parseDate(a.date);
       final dateB = parseDate(b.date);
 
-      return dateB.compareTo(dateA);
+      return dateB.compareTo(dateA); // Latest first
     });
 
     // Save back to AppData
     AppData().invoices = invoices;
 
-    setState(() {});
-  }
-
-  void _applyFilter(String filter) {
-    setState(() {
-      selectedFilter = filter;
-      if (filter == "paid") {
-        selectedStatus = Status.paid;
-      } else if (filter == "unpaid") {
-        selectedStatus = Status.unpaid;
-      } else if (filter == "overdue") {
-        selectedStatus = Status.overdue;
-      } else {
-        selectedStatus = Status.all;
-      }
-    });
+    setState(() {});*/
   }
 
   Future<void> _createNewInvoice() async {
@@ -142,8 +143,6 @@ class _InvoiceListPageState extends State<InvoiceListPage> {
     // Show rating popup after 3 invoices AND only if user has not rated
     if (invoices.length >= 3 && !hasRated) {
       await showRateUsDialog(context, (rating) {
-        print("User rating: \$rating");
-
         if (rating > 0) {
           AppData().markUserRated(); // save inside InvoiceModel
         }
@@ -167,24 +166,13 @@ class _InvoiceListPageState extends State<InvoiceListPage> {
     if (newInvoice != null) _loadData();
   }
 
-  Future<void> _createNewQuotation() async {
-    final newInvoice = await Navigator.push<InvoiceModel>(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const InvoiceFormPage(isQuotation: true),
-      ),
-    );
-
-    if (newInvoice != null) _loadData();
-  }
-
   Future<void> _editInvoice(InvoiceModel invoice) async {
     final index = invoices.indexOf(invoice);
     final updatedInvoice = await Navigator.push<InvoiceModel>(
       context,
       MaterialPageRoute(
         builder: (context) =>
-            InvoiceFormPage(existingInvoice: invoice.toJson(), index: index),
+            InvoiceFormPage(existingData: invoice.toJson(), index: index),
       ),
     );
     if (updatedInvoice != null) _loadData();
@@ -195,7 +183,7 @@ class _InvoiceListPageState extends State<InvoiceListPage> {
       context: context,
       title: "Delete Invoice",
       message:
-          "Are you sure you want to permanently delete invoice \${invoice.invoiceNo}? This action cannot be undone.",
+          "Are you sure you want to permanently delete invoice ${invoice.invoiceNo}? This action cannot be undone.",
       icon: Icons.warning_amber_rounded,
       iconColor: Colors.red,
       btn3: "Delete",
@@ -209,6 +197,8 @@ class _InvoiceListPageState extends State<InvoiceListPage> {
         );
         invoices = List.from(AppData().invoices);
       });
+      await AppData().saveAllData();
+      _loadData();
     }
   }
 
@@ -222,7 +212,6 @@ class _InvoiceListPageState extends State<InvoiceListPage> {
       final updated = invoice.copyWith(status: newStatus);
       AppData().invoices[index] = updated;
 
-      // Recalculate overdue status immediately
       await _loadData();
     }
   }
@@ -274,8 +263,7 @@ class _InvoiceListPageState extends State<InvoiceListPage> {
         context,
         MaterialPageRoute(builder: (context) => PdfPreviewScreen(file: file!)),
       );
-    } catch (e, st) {
-      // Show simple readable error
+    } catch (e) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text("Error generating PDF: $e")));
@@ -298,97 +286,22 @@ class _InvoiceListPageState extends State<InvoiceListPage> {
             : isTablet1
             ? 2
             : 3;
-        final double titleFontSize = isMobile ? 24 : (isTablet ? 28 : 32);
 
         final filteredInvoices = invoices.where((invoice) {
-          if (selectedFilter == "paid") return invoice.status == "paid";
-          if (selectedFilter == "unpaid") return invoice.status == "unpaid";
-          if (selectedFilter == "overdue") return invoice.status == "overdue";
+          if (widget.selectedFilter == "paid") {
+            return invoice.status == "paid";
+          }
+          if (widget.selectedFilter == "unpaid") {
+            return invoice.status == "unpaid";
+          }
+          if (widget.selectedFilter == "overdue") {
+            return invoice.status == "overdue";
+          }
           return true;
         }).toList();
 
         return Scaffold(
           backgroundColor: backgroundColor,
-          appBar: AppBar(
-            elevation: 0,
-            scrolledUnderElevation: 0,
-            centerTitle: true,
-            backgroundColor: backgroundColor,
-            foregroundColor: Colors.black,
-            title: Text(
-              "Dashboard",
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: titleFontSize,
-              ),
-            ),
-            actions: [
-              PopupMenuButton<String>(
-                key: _menuKey,
-                color: Colors.white,
-                tooltip: "Filter invoices",
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                onSelected: (value) => _applyFilter(value),
-                itemBuilder: (context) => [
-                  const PopupMenuItem(
-                    value: "all",
-                    child: Row(
-                      children: [
-                        Icon(Icons.list_alt_rounded, color: Colors.black54),
-                        SizedBox(width: 10),
-                        Text("All Invoices"),
-                      ],
-                    ),
-                  ),
-                  const PopupMenuItem(
-                    value: "paid",
-                    child: Row(
-                      children: [
-                        Icon(Icons.check_circle_outline, color: Colors.green),
-                        SizedBox(width: 10),
-                        Text("Paid Invoices"),
-                      ],
-                    ),
-                  ),
-                  const PopupMenuItem(
-                    value: "unpaid",
-                    child: Row(
-                      children: [
-                        Icon(Icons.cancel_outlined, color: Colors.orange),
-                        SizedBox(width: 10),
-                        Text("Unpaid Invoices"),
-                      ],
-                    ),
-                  ),
-                  const PopupMenuItem(
-                    value: "overdue",
-                    child: Row(
-                      children: [
-                        Icon(Icons.error_outline, color: Colors.red),
-                        SizedBox(width: 10),
-                        Text("Overdue Invoices"),
-                      ],
-                    ),
-                  ),
-                ],
-                child: CustomIconButton(
-                  label: selectedFilter == "all"
-                      ? "Filter"
-                      : selectedFilter[0].toUpperCase() +
-                            selectedFilter.substring(1),
-                  icon: Icons.filter_list_rounded,
-                  onTap: () {
-                    final dynamic state = _menuKey.currentState;
-                    state.showButtonMenu();
-                  },
-                ),
-              ),
-              SizedBox(width: 12),
-            ],
-          ),
-          drawer: const AppDrawer(),
           body: filteredInvoices.isEmpty
               ? Center(
                   child: Column(
@@ -405,9 +318,9 @@ class _InvoiceListPageState extends State<InvoiceListPage> {
                       ),
                       SizedBox(height: 16),
                       Text(
-                        selectedStatus == Status.all
+                        widget.selectedFilter == "all"
                             ? "No invoices found. Create one to get started!"
-                            : "No ${selectedStatus.name} invoices match the filter.",
+                            : "No ${widget.selectedFilter} invoices match the filter.",
                         style: TextStyle(
                           fontSize: isMobile
                               ? 15
@@ -420,95 +333,62 @@ class _InvoiceListPageState extends State<InvoiceListPage> {
                     ],
                   ),
                 )
-              : SingleChildScrollView(
-                  padding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                  child: Column(
-                    children: [
-                      MasonryGridView.count(
-                        crossAxisCount: crossAxisCount,
-                        crossAxisSpacing: 10,
-                        mainAxisSpacing: 20,
-                        physics: const NeverScrollableScrollPhysics(),
-                        shrinkWrap: true,
-                        itemCount: filteredInvoices.length,
-                        itemBuilder: (context, index) {
-                          final invoice = filteredInvoices[index];
-                          final companyName = invoice.billTo
-                              .trim()
-                              .split('\\n')
-                              .first;
-                          return buildInvoiceCard(
-                            context,
-                            invoice,
-                            companyName,
-                            AppData().profile,
-                          );
-                        },
-                      ),
-                      SizedBox(height: 130),
-                    ],
+              : Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      children: [
+                        MasonryGridView.count(
+                          crossAxisCount: crossAxisCount,
+                          crossAxisSpacing: 10,
+                          mainAxisSpacing: isMobile ? 15 : 20,
+                          physics: const NeverScrollableScrollPhysics(),
+                          shrinkWrap: true,
+                          itemCount: filteredInvoices.length,
+                          itemBuilder: (context, index) {
+                            final invoice = filteredInvoices[index];
+                            final companyName = invoice.billTo
+                                .trim()
+                                .split('\\n')
+                                .first;
+                            return buildInvoiceCard(
+                              context,
+                              invoice,
+                              companyName,
+                              AppData().profile,
+                            );
+                          },
+                        ),
+                        SizedBox(height: 70),
+                      ],
+                    ),
                   ),
                 ),
-          floatingActionButton: Column(
-            mainAxisSize: MainAxisSize.min, // ⭐ આ જરૂરી છે
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              FloatingActionButton.extended(
-                heroTag: "invoice_btn",
-                onPressed: _createNewInvoice,
-                extendedPadding: EdgeInsets.symmetric(horizontal: 16),
-                icon: Icon(
-                  Icons.add,
-                  size: isMobile
-                      ? 18
-                      : isTablet
-                      ? 20
-                      : 22,
-                ),
-                label: Text(
-                  "New Invoice",
-                  style: TextStyle(
-                    fontSize: isMobile
-                        ? 14
-                        : isTablet
-                        ? 16
-                        : 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                backgroundColor: primaryColor,
-                foregroundColor: Colors.white,
+          floatingActionButton: FloatingActionButton.extended(
+            heroTag: "invoice_btn",
+            onPressed: _createNewInvoice,
+            extendedPadding: EdgeInsets.symmetric(horizontal: 16),
+            icon: Icon(
+              Icons.add,
+              size: isMobile
+                  ? 18
+                  : isTablet
+                  ? 20
+                  : 22,
+            ),
+            label: Text(
+              "New Invoice",
+              style: TextStyle(
+                fontSize: isMobile
+                    ? 14
+                    : isTablet
+                    ? 16
+                    : 18,
+                fontWeight: FontWeight.bold,
               ),
-
-              SizedBox(height: isMobile ? 12 : 14),
-
-              FloatingActionButton.extended(
-                heroTag: "quick_btn",
-                onPressed: _createNewQuotation,
-                icon: Icon(
-                  Icons.add,
-                  size: isMobile
-                      ? 18
-                      : isTablet
-                      ? 20
-                      : 22,
-                ),
-                label: Text(
-                  "New Quotation",
-                  style: TextStyle(
-                    fontSize: isMobile
-                        ? 14
-                        : isTablet
-                        ? 16
-                        : 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-
-                backgroundColor: primaryColor,
-                foregroundColor: Colors.white,
-              ),
-            ],
+            ),
+            backgroundColor: primaryColor,
+            foregroundColor: Colors.white,
           ),
         );
       },
@@ -597,7 +477,7 @@ class _InvoiceListPageState extends State<InvoiceListPage> {
                 ],
               ),
 
-              SizedBox(height: 10),
+              SizedBox(height: 5),
 
               // Amount + Dates Row
               Row(

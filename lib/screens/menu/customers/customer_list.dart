@@ -76,6 +76,7 @@ class _CustomerListState extends State<CustomerList> {
         AppData().customers = List.from(customers);
         _onSearchChanged(searchQuery); // refresh filter
       });
+      await AppData().saveAllData();
     }
   }
 
@@ -276,7 +277,7 @@ class _CustomerListState extends State<CustomerList> {
                 borderRadius: BorderRadius.circular(26),
               ),
               child: const Icon(
-                Icons.people_outline_rounded,
+                Icons.groups,
                 size: 48,
                 color: Color(0xFF009A75),
               ),

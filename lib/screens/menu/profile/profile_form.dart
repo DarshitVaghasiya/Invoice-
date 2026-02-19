@@ -13,6 +13,7 @@ import 'package:invoice/screens/home/invoice_list.dart';
 import 'package:invoice/utils/device_utils.dart';
 import 'package:invoice/widgets/buttons/custom_elevatedbutton.dart';
 import 'package:invoice/widgets/buttons/custom_iconbutton.dart';
+import 'package:invoice/widgets/buttons/custom_tabbar.dart';
 import 'package:invoice/widgets/buttons/custom_textformfield.dart';
 import 'package:uuid/uuid.dart';
 
@@ -245,7 +246,7 @@ class _InvoiceProfileFormState extends State<InvoiceProfileForm> {
 
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (_) => const InvoiceListPage()),
+      MaterialPageRoute(builder: (_) => const InvoiceHomeTabPage()),
     );
   }
 
@@ -523,13 +524,16 @@ class _InvoiceProfileFormState extends State<InvoiceProfileForm> {
           backgroundColor: const Color(0xFFF0F2F5),
           appBar: AppBar(
             title: Text(
-              isEditing ? "Create Profile" : "User Profile",
+              AppData().profile == null
+                  ? "Create profile"
+                  : isEditing
+                  ? "Update Profile"
+                  : "User Profile",
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: titleFontSize,
               ),
             ),
-            centerTitle: true,
             backgroundColor: const Color(0xFFF0F2F5),
             elevation: 0,
             scrolledUnderElevation: 0,
@@ -619,7 +623,7 @@ class _InvoiceProfileFormState extends State<InvoiceProfileForm> {
                         Navigator.pushReplacement(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => const InvoiceListPage(),
+                            builder: (_) => const InvoiceHomeTabPage(),
                           ),
                         );
                       },
@@ -904,7 +908,7 @@ class _InvoiceProfileFormState extends State<InvoiceProfileForm> {
                                 Navigator.pushReplacement(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (_) => const InvoiceListPage(),
+                                    builder: (_) => const InvoiceHomeTabPage(),
                                   ),
                                 );
                               },

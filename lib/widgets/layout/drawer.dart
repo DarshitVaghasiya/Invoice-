@@ -6,6 +6,7 @@ import 'package:invoice/Screens/Menu/Items/items_list.dart';
 import 'package:invoice/Screens/Menu/Profile/profile_form.dart';
 import 'package:invoice/Screens/Menu/Settings/settings.dart';
 import 'package:invoice/app_data/app_data.dart';
+import 'package:invoice/screens/home/quotation_list.dart';
 import 'package:invoice/screens/menu/reports/reports_list.dart';
 import 'package:invoice/screens/menu/support/support.dart';
 import 'package:invoice/screens/menu/upgrade_plan/upgrade_plan.dart';
@@ -168,7 +169,10 @@ class _AppDrawerState extends State<AppDrawer> {
 
             // Items List
             ListTile(
-              leading: const Icon(Icons.view_list, color: Colors.blue),
+              leading: const Icon(
+                Icons.inventory_2_outlined,
+                color: Colors.blue,
+              ),
               title: const Text(
                 "Items List",
                 style: TextStyle(fontWeight: FontWeight.bold),
@@ -203,7 +207,7 @@ class _AppDrawerState extends State<AppDrawer> {
             //Reports
             ListTile(
               leading: const Icon(
-                Icons.report_gmailerrorred,
+                Icons.insert_drive_file_outlined,
                 color: Colors.orange,
               ),
               title: const Text(

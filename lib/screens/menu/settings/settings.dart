@@ -10,8 +10,10 @@ import 'package:invoice/screens/home/invoice_list.dart';
 import 'package:invoice/screens/menu/settings/BankAccounts/bank_accounts.dart';
 import 'package:invoice/screens/menu/settings/Signature/signature.dart';
 import 'package:invoice/widgets/buttons/custom_dialog.dart';
+import 'package:invoice/widgets/buttons/custom_tabbar.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 import 'edit_invoice_title/edit_invoice_title.dart';
 import 'setting_tiles/settings_tiles.dart' show SettingTile;
 import 'Templates/templates.dart';
@@ -79,12 +81,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _importData() async {
-
     if (!isPurchase) {
       showLimitDialog("Import is available in Premium only.");
       return;
     }
-
 
     final selectedFile = await FilePicker.platform.pickFiles(
       type: FileType.custom,
@@ -134,7 +134,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         if (context.mounted) {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (_) => const InvoiceListPage()),
+            MaterialPageRoute(builder: (_) => const InvoiceHomeTabPage()),
           );
         }
       },
@@ -148,12 +148,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _exportData() async {
-
     if (!isPurchase) {
       showLimitDialog("Export is available in Premium only.");
       return;
     }
-
 
     final confirmed = await showCustomAlertDialog(
       context: context,
@@ -170,6 +168,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
       final path = await InvoiceStorage.exportDataToDownloads();
       if (path != null) {
+        print("✅ File exported to: $path");
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text("✅ Exported to $path")));
@@ -225,7 +224,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             fontSize: titleFontSize,
           ),
         ),
-        centerTitle: true,
         backgroundColor: const Color(0xFFF0F2F5),
         elevation: 0,
         scrolledUnderElevation: 0,
@@ -243,7 +241,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 crossAxisSpacing: spacing,
                 childAspectRatio: childAspectRatio,
                 children: [
-
                   SettingTile(
                     title: "Choose Invoice Template",
                     subtitle: settings?.selectedTemplate,

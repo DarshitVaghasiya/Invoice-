@@ -85,45 +85,56 @@ Future<bool?> showCustomAlertDialog({
                   Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      if (addButton)
-                        CustomIconButton(
-                          label: btn1,
-                          backgroundColor: Colors.transparent,
-                          borderColor: btn1Color,
-                          textColor: btn1Color,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 10,
+                      Expanded(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerRight,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (addButton)
+                                CustomIconButton(
+                                  label: btn1,
+                                  backgroundColor: Colors.transparent,
+                                  borderColor: btn1Color,
+                                  textColor: btn1Color,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 20,
+                                    vertical: 10,
+                                  ),
+                                  onTap: () => Navigator.pop(context, null),
+                                ),
+
+                              if (addButton) const SizedBox(width: 10),
+
+                              if (!singleButton)
+                                CustomIconButton(
+                                  label: btn2,
+                                  backgroundColor: Colors.transparent,
+                                  borderColor: btn2Color,
+                                  textColor: btn2Color,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 20,
+                                    vertical: 10,
+                                  ),
+                                  onTap: () => Navigator.pop(context, false),
+                                ),
+
+                              if (!singleButton) const SizedBox(width: 10),
+
+                              CustomIconButton(
+                                label: singleButton ? "OK" : btn3,
+                                borderColor: btn3Color,
+                                textColor: btn3Color,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 20,
+                                  vertical: 10,
+                                ),
+                                onTap: () => Navigator.pop(context, true),
+                              ),
+                            ],
                           ),
-                          onTap: () => Navigator.pop(context),
                         ),
-
-                      if (addButton) const SizedBox(width: 10),
-
-                      if (!singleButton)
-                        CustomIconButton(
-                          label: btn2,
-                          backgroundColor: Colors.transparent,
-                          borderColor: btn2Color,
-                          textColor: btn2Color,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 10,
-                          ),
-                          onTap: () => Navigator.pop(context, false),
-                        ),
-
-                      if (!singleButton) const SizedBox(width: 10),
-
-                      CustomIconButton(
-                        label: singleButton ? "OK" : btn3,
-                        borderColor: btn3Color,
-                        textColor: btn3Color,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 10,
-                        ),
-                        onTap: () => Navigator.pop(context, true),
                       ),
                     ],
                   ),

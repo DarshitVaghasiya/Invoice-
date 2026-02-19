@@ -227,7 +227,6 @@ class _PlanPageState extends State<PlanPage> {
         ),
         backgroundColor: const Color(0xFFEEF6FF),
         elevation: 0,
-        centerTitle: true,
         scrolledUnderElevation: 0,
         actions: isMobile
             ? null

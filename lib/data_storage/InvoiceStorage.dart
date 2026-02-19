@@ -4,7 +4,9 @@ import 'package:invoice/models/add_items_model.dart';
 import 'package:invoice/models/customer_model.dart';
 import 'package:invoice/models/invoice_model.dart';
 import 'package:invoice/models/profile_model.dart';
+import 'package:invoice/models/quotation_model.dart';
 import 'package:invoice/models/settings_model.dart';
+import 'package:media_store_plus/media_store_plus.dart';
 import 'package:path_provider/path_provider.dart';
 
 class InvoiceStorage {
@@ -26,6 +28,7 @@ class InvoiceStorage {
         "profile": {},
         "customer": [],
         "invoice": [],
+        "quotation": [],
         "item": [],
         "settings": {},
       };
@@ -39,6 +42,7 @@ class InvoiceStorage {
         "profile": {},
         "customer": [],
         "invoice": [],
+        "quotation": [],
         "item": [],
         "settings": {},
       };
@@ -52,6 +56,7 @@ class InvoiceStorage {
         "profile": {},
         "customer": [],
         "invoice": [],
+        "quotation": [],
         "item": [],
         "settings": {},
       };
@@ -79,6 +84,9 @@ class InvoiceStorage {
       "invoices": (data["invoice"] as List? ?? [])
           .map((e) => InvoiceModel.fromJson(Map<String, dynamic>.from(e)))
           .toList(),
+      "quotations": (data["quotation"] as List? ?? [])
+          .map((e) => QuotationModel.fromJson(Map<String, dynamic>.from(e)))
+          .toList(),
       "items": (data["item"] as List? ?? [])
           .map((e) => AddItemModel.fromJson(Map<String, dynamic>.from(e)))
           .toList(),
@@ -94,6 +102,7 @@ class InvoiceStorage {
   static Future<void> saveAll({
     required List<CustomerModel> customers,
     required List<InvoiceModel> invoices,
+    required List<QuotationModel> quotation,
     required List<AddItemModel> items,
     ProfileModel? profile,
     required SettingsModel settings,
@@ -102,6 +111,7 @@ class InvoiceStorage {
       "profile": profile?.toJson() ?? {},
       "customer": customers.map((e) => e.toJson()).toList(),
       "invoice": invoices.map((e) => e.toJson()).toList(),
+      "quotation": quotation.map((e) => e.toJson()).toList(),
       "item": items.map((e) => e.toJson()).toList(),
       "settings": settings.toJson(),
     };
@@ -179,7 +189,38 @@ class InvoiceStorage {
   }
 
   // -----------------------------------------------------------------
-  // 🧾 INVOICE HANDLERS
+  // 🧾 QUOTATION HANDLERS
+  // -----------------------------------------------------------------
+
+  static Future<List<QuotationModel>> loadQuotation() async {
+    final data = await _loadData();
+    return (data["quotation"] as List)
+        .map((e) => QuotationModel.fromJson(Map<String, dynamic>.from(e)))
+        .toList();
+  }
+
+  static Future<void> saveQuotation(List<QuotationModel> quotation) async {
+    final data = await _loadData();
+    data["quotation"] = quotation.map((e) => e.toJson()).toList();
+    await _saveData(data);
+  }
+
+  static Future<void> addQuotation(QuotationModel quotation) async {
+    final quotations = await loadQuotation();
+    quotations.add(quotation);
+    await saveQuotation(quotations);
+  }
+
+  static Future<void> deleteQuotation(int index) async {
+    final quotations = await loadQuotation();
+    if (index >= 0 && index < quotations.length) {
+      quotations.removeAt(index);
+      await saveQuotation(quotations);
+    }
+  }
+
+  // -----------------------------------------------------------------
+  // 🧾 ITEMS HANDLERS
   // -----------------------------------------------------------------
 
   static Future<List<AddItemModel>> loadItems() async {
@@ -290,32 +331,26 @@ class InvoiceStorage {
 
       final jsonString = const JsonEncoder.withIndent('  ').convert(data);
 
-      Directory downloadsDir;
-      if (Platform.isAndroid) {
-        final dir = await getExternalStorageDirectory();
-        if (dir == null) return null;
-
-        // Go up to /storage/emulated/0/Download
-        final path = "${dir.path.split("/Android").first}/Download";
-        downloadsDir = Directory(path);
-      } else {
-        downloadsDir =
-            await getDownloadsDirectory() ??
-            await getApplicationDocumentsDirectory();
-      }
-
-      if (!await downloadsDir.exists()) {
-        await downloadsDir.create(recursive: true);
-      }
-
+      final tempDir = await getTemporaryDirectory();
       final timestamp = DateTime.now().toIso8601String().replaceAll(":", "-");
-      final file = File("${downloadsDir.path}/invoice_$timestamp.json");
+      final fileName = "invoice_$timestamp.json";
+      final tempFile = File("${tempDir.path}/$fileName");
 
+      await tempFile.writeAsString(jsonString, flush: true);
 
-      await file.writeAsString(jsonString, flush: true);
+      final mediaStore = MediaStore();
 
-      print("✅ File Successfully Exported In Your Download Folder");
-      return file.path;
+      // 🔥 IMPORTANT: dirName MUST be DirName.download
+      await mediaStore.saveFile(
+        tempFilePath: tempFile.path,
+        dirType: DirType.download,
+        dirName: DirName.download,
+      );
+
+      print("✅ File Saved In Public Downloads Folder");
+      print("File Name: $fileName");
+
+      return fileName;
     } catch (e) {
       print("❌ Export failed: $e");
       return null;
@@ -374,22 +409,27 @@ class InvoiceStorage {
             List newList = value;
 
             for (var newItem in newList) {
-              final newId = newItem["id"] ?? newItem["invoiceNo"];
+              final newId =
+                  newItem["id"] ??
+                  newItem["quotationID"] ??
+                  newItem["invoiceNo"];
               final exists = oldList.any(
-                    (item) =>
-                item["id"] == newId ||
+                (item) =>
+                    item["id"] == newId ||
+                    item["quotationID"] == newId ||
                     item["invoiceNo"] == newId,
               );
               if (!exists) oldList.add(newItem); // add only if not exists
             }
           }
-
           // PROFILE → merge but skip duplicate bank accounts
           else if (key == "profile" && value is Map) {
             if (oldData[key] is! Map) {
               oldData[key] = value;
             } else {
-              Map<String, dynamic> newProfile = Map<String, dynamic>.from(value);
+              Map<String, dynamic> newProfile = Map<String, dynamic>.from(
+                value,
+              );
               newProfile.remove("bankAccounts");
               oldData[key].addAll(newProfile);
 
@@ -406,14 +446,12 @@ class InvoiceStorage {
               }
             }
           }
-
           // OTHER MAP KEYS → add only if key not found
           else {
             if (!oldData.containsKey(key)) oldData[key] = value;
           }
         });
       }
-
       // ---------------------- SMART REPLACE MODE ----------------------
       else {
         newData.forEach((key, value) {
@@ -423,10 +461,15 @@ class InvoiceStorage {
             List newList = value;
 
             for (var newItem in newList) {
-              final newId = newItem["id"] ?? newItem["invoiceNo"];
+              final newId =
+                  newItem["id"] ??
+                  newItem["quotationID"] ??
+                  newItem["invoiceNo"];
+
               final index = oldList.indexWhere(
-                    (item) =>
-                item["id"] == newId ||
+                (item) =>
+                    item["id"] == newId ||
+                    item["quotationID"] == newId ||
                     item["invoiceNo"] == newId,
               );
               if (index != -1)
@@ -435,13 +478,14 @@ class InvoiceStorage {
                 oldList.add(newItem); // add
             }
           }
-
           // PROFILE → merge + replace bank accounts
           else if (key == "profile" && value is Map) {
             if (oldData[key] is! Map) {
               oldData[key] = value;
             } else {
-              Map<String, dynamic> newProfile = Map<String, dynamic>.from(value);
+              Map<String, dynamic> newProfile = Map<String, dynamic>.from(
+                value,
+              );
               newProfile.remove("bankAccounts");
               oldData[key].addAll(newProfile);
 
@@ -452,7 +496,9 @@ class InvoiceStorage {
 
                 for (var bank in newBanks) {
                   final newBankId = bank["id"];
-                  final index = oldBanks.indexWhere((b) => b["id"] == newBankId);
+                  final index = oldBanks.indexWhere(
+                    (b) => b["id"] == newBankId,
+                  );
                   if (index != -1)
                     oldBanks[index] = bank; // replace
                   else
@@ -461,7 +507,6 @@ class InvoiceStorage {
               }
             }
           }
-
           // OTHER KEYS → full overwrite
           else {
             oldData[key] = value;
@@ -477,7 +522,6 @@ class InvoiceStorage {
       return false;
     }
   }
-
 }
 
 class PdfSaver {

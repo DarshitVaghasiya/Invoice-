@@ -84,6 +84,7 @@ class _CustomerFormState extends State<CustomerForm> {
       AppData().customers.add(customer);
     }
 
+    await AppData().saveAllData();
     // ✅ Return updated customer model to previous screen
     Navigator.pop(context, customer);
   }
@@ -103,15 +104,12 @@ class _CustomerFormState extends State<CustomerForm> {
           backgroundColor: Color(0xFFF0F2F5),
           appBar: AppBar(
             title: Text(
-              widget.existingCustomer == null
-                  ? "Customer Information"
-                  : "Customer Details",
+              "Customer Details",
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: titleFontSize,
               ),
             ),
-            centerTitle: true,
             backgroundColor: Color(0xFFF0F2F5),
             scrolledUnderElevation: 0,
             elevation: 0,

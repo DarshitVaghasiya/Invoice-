@@ -44,7 +44,7 @@ class _AddItemsState extends State<AddItems> {
     }
   }
 
-  void saveItem() {
+  Future<void> saveItem() async {
     if (_formKey.currentState!.validate()) {
       final newItem = AddItemModel(
         id: widget.existingItem?.id ?? uuid.v4(),
@@ -59,7 +59,7 @@ class _AddItemsState extends State<AddItems> {
       } else {
         AppData().items.add(newItem);
       }
-
+      await AppData().saveAllData();
       Navigator.pop(context, newItem);
     }
   }
@@ -85,7 +85,6 @@ class _AddItemsState extends State<AddItems> {
                 fontSize: titleFontSize,
               ),
             ),
-            centerTitle: true,
             backgroundColor: const Color(0xFFF0F2F5),
             elevation: 0,
             foregroundColor: Colors.black,
@@ -226,21 +225,21 @@ class _AddItemsState extends State<AddItems> {
       margin: const EdgeInsets.only(bottom: 16),
       padding: EdgeInsets.fromLTRB(25, 25, 25, 35),
       child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF333333),
-              ),
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF333333),
             ),
-            const SizedBox(height: 16),
-            _buildResponsiveGrid(children, crossAxisCount, spacing),
-          ],
-        ),
-      );
+          ),
+          const SizedBox(height: 16),
+          _buildResponsiveGrid(children, crossAxisCount, spacing),
+        ],
+      ),
+    );
   }
 
   Widget _buildResponsiveGrid(

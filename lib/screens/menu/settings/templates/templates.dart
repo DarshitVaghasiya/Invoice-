@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:invoice/Global%20Veriables/global_veriable.dart';
 import 'package:invoice/app_data/app_data.dart';
+
 class InvoiceTemplates extends StatefulWidget {
   const InvoiceTemplates({super.key});
 
@@ -48,7 +49,6 @@ class _InvoiceTemplatesState extends State<InvoiceTemplates> {
           "Choose Template",
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 24),
         ),
-        centerTitle: true,
         elevation: 0,
         scrolledUnderElevation: 0,
         backgroundColor: Color(0xFFF0F2F5),

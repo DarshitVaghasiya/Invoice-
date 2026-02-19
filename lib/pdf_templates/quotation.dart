@@ -2,30 +2,30 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:invoice/app_data/app_data.dart';
 import 'package:invoice/data_storage/InvoiceStorage.dart';
-import 'package:invoice/models/invoice_model.dart';
 import 'package:invoice/models/item_model.dart';
+import 'package:invoice/models/quotation_model.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
 class QuotationPdfGenerator {
-  static List<String> _getHeaders(InvoiceModel invoice) {
+  static List<String> _getHeaders(QuotationModel quotation) {
     final settings = AppData().settings;
 
     return [
-      (invoice.descLabel).trim().isNotEmpty
-          ? invoice.descLabel
+      (quotation.descLabel).trim().isNotEmpty
+          ? quotation.descLabel
           : settings.descTitle,
-      (invoice.qtyLabel).trim().isNotEmpty
-          ? invoice.qtyLabel
+      (quotation.qtyLabel).trim().isNotEmpty
+          ? quotation.qtyLabel
           : settings.qtyTitle,
-      (invoice.rateLabel).trim().isNotEmpty
-          ? invoice.rateLabel
+      (quotation.rateLabel).trim().isNotEmpty
+          ? quotation.rateLabel
           : settings.rateTitle,
       "Amount",
     ];
   }
 
-  static Future<File?> generateQuotation(InvoiceModel invoice) async {
+  static Future<File?> generateQuotation(QuotationModel quotation) async {
     final baseFont = pw.Font.ttf(
       await rootBundle.load("assets/Fonts/Roboto-Regular.ttf"),
     );
@@ -40,7 +40,7 @@ class QuotationPdfGenerator {
     double toDouble(dynamic val) => double.tryParse(val?.toString() ?? '') ?? 0;
 
     final settings = AppData().settings;
-    final currency = invoice.currencySymbol ?? "\$";
+    final currency = quotation.currencySymbol ?? "\$";
 
     pdf.addPage(
       pw.MultiPage(
@@ -67,7 +67,7 @@ class QuotationPdfGenerator {
                       pw.Container(
                         width: 300, // ✅ set max width so text can wrap
                         child: pw.Text(
-                          invoice.from,
+                          quotation.from,
                           style: pw.TextStyle(
                             color: PdfColors.black,
                             fontSize: 14,
@@ -108,7 +108,7 @@ class QuotationPdfGenerator {
                       ),
                     ),
                     pw.SizedBox(height: 4),
-                    pw.Text(invoice.billTo),
+                    pw.Text(quotation.billTo),
                   ],
                 ),
                 // Right → Invoice details
@@ -133,7 +133,7 @@ class QuotationPdfGenerator {
                         pw.SizedBox(
                           width: 100,
                           child: pw.Text(
-                            invoice.date,
+                            quotation.date,
                             textAlign: pw.TextAlign.right,
                             style: pw.TextStyle(fontSize: 12),
                           ),
@@ -148,7 +148,7 @@ class QuotationPdfGenerator {
             pw.SizedBox(height: 25),
 
             /// 🔵 ITEM TABLE
-            _itemTable(invoice, currency, invoice.items),
+            _itemTable(quotation, currency, quotation.items),
 
             pw.SizedBox(height: 50),
 
@@ -164,21 +164,21 @@ class QuotationPdfGenerator {
                   children: [
                     _totalRow(
                       "SubTotal",
-                      "$currency ${toDouble(invoice.subtotal).toStringAsFixed(2)}",
+                      "$currency ${toDouble(quotation.subtotal).toStringAsFixed(2)}",
                     ),
-                    if (toDouble(invoice.discount) > 0)
+                    if (toDouble(quotation.discount) > 0)
                       _totalRow(
                         "Discount",
-                        "$currency ${toDouble(invoice.discountAmount).toStringAsFixed(2)}",
+                        "$currency ${toDouble(quotation.discountAmount).toStringAsFixed(2)}",
                       ),
-                    if (toDouble(invoice.tax) > 0)
+                    if (toDouble(quotation.tax) > 0)
                       _totalRow(
                         "Tax",
-                        "$currency ${toDouble(invoice.taxAmount).toStringAsFixed(2)}",
+                        "$currency ${toDouble(quotation.taxAmount).toStringAsFixed(2)}",
                       ),
                     pw.Divider(),
                     pw.Text(
-                      "Total : $currency ${toDouble(invoice.total).toStringAsFixed(2)}",
+                      "Total : $currency ${toDouble(quotation.total).toStringAsFixed(2)}",
                       style: pw.TextStyle(
                         fontWeight: pw.FontWeight.bold,
                         fontSize: 14,
@@ -204,7 +204,7 @@ class QuotationPdfGenerator {
 
   /// 🧾 ITEM TABLE (PROPER ALIGNMENT)
   static pw.Widget _itemTable(
-    InvoiceModel invoice,
+    QuotationModel quotation,
     String currency,
     List<ItemModel> items,
   ) {
@@ -216,7 +216,7 @@ class QuotationPdfGenerator {
       customFieldNames.addAll(item.customControllers.keys);
     }
 
-    final defaultHeaders = _getHeaders(invoice);
+    final defaultHeaders = _getHeaders(quotation);
 
     final List<String> headers = [
       defaultHeaders[0], // Description

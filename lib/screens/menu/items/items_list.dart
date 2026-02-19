@@ -65,6 +65,7 @@ class ItemsListState extends State<ItemsList> {
         AppData().items = List.from(items);
         _onSearchChanged(searchQuery); // refresh filter safely
       });
+      await AppData().saveAllData();
     }
   }
 
@@ -214,9 +215,8 @@ class ItemsListState extends State<ItemsList> {
             backgroundColor: const Color(0xFFF9FAFB),
             elevation: 0,
             scrolledUnderElevation: 0,
-            centerTitle: true,
             title: Text(
-              widget.isSelectionMode ? "Select Item" : "Items List",
+              widget.isSelectionMode ? "Select Item" : "Items",
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
           ),
@@ -453,7 +453,7 @@ class ItemsListState extends State<ItemsList> {
             borderRadius: BorderRadius.circular(10),
           ),
           child: const Icon(
-            Icons.inventory_2_rounded,
+            Icons.inventory_2_outlined,
             color: Color(0xFF009A75),
           ),
         ),

@@ -157,7 +157,6 @@ class _EditTitleState extends State<EditTitle> {
             backgroundColor: const Color(0xFFF0F2F5),
             elevation: 0,
             foregroundColor: Colors.black,
-            centerTitle: true,
             scrolledUnderElevation: 0,
             actions: [
               !isMobile

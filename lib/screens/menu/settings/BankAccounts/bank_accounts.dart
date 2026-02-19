@@ -129,7 +129,6 @@ class _BankAccountListMasonryState extends State<BankAccountListMasonry>
             fontWeight: FontWeight.w900,
           ),
         ),
-        centerTitle: true,
         backgroundColor: const Color(0xFFF0F2F5),
         elevation: 0,
       ),
